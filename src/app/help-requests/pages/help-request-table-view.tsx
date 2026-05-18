@@ -19,6 +19,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { TruncatedText } from "@/components/ui/truncated-text"
 import { MoreHorizontal, Pencil, Trash2, Eye, HandHelping, X, UserCheck, CheckCircle2 } from "lucide-react"
 import { DropdownMenuSeparator } from "@/components/ui/dropdown-menu"
 import { Link } from "react-router"
@@ -88,7 +89,7 @@ export function HelpRequestTableView({
   const showMenu  = canView || canEdit || canDelete
   return (
     <div className="w-full overflow-x-auto rounded-md border">
-      <Table>
+      <Table className="w-full table-fixed">
         <TableHeader>
           <TableRow>
             <TableHead>Description</TableHead>
@@ -108,30 +109,31 @@ export function HelpRequestTableView({
 
             return (
               <TableRow key={request.id} className="group">
-                {/* Description — limited to 2 lines with a fade-out on the right */}
-                <TableCell className="py-3 max-w-[220px]">
-                  <div className="relative overflow-hidden">
-                    <button
-                      type="button"
-                      className="font-medium text-foreground text-sm hover:text-primary hover:underline underline-offset-2 transition-colors w-full text-left line-clamp-2"
-                      onClick={() => onSelect(request)}
-                    >
-                      {request.description}
-                    </button>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 w-16">
-                      <div className="h-full w-full bg-gradient-to-l from-background via-background/70 to-transparent" />
-                    </div>
-                  </div>
+                {/* Description — limited to 2 lines with ellipsis overflow */}
+                <TableCell className="py-3 max-w-55">
+                  <button
+                    type="button"
+                    className="font-medium text-foreground text-sm hover:text-primary hover:underline underline-offset-2 transition-colors w-full text-left"
+                    onClick={() => onSelect(request)}
+                  >
+                    <TruncatedText
+                      value={request.description}
+                      className="max-w-37.5 sm:max-w-52.5 lg:max-w-75"
+                    />
+                  </button>
                 </TableCell>
 
                 {/* Task name linked to the task detail page */}
-                <TableCell className="py-3 text-sm text-muted-foreground max-w-[130px] truncate">
+                <TableCell className="py-3 text-sm text-muted-foreground max-w-32.5 truncate">
                   {request.task ? (
                     <Link
                       to={`/tasks/${request.task.id}`}
-                      className="hover:text-primary hover:underline underline-offset-2 transition-colors truncate block"
+                      className="hover:text-primary hover:underline underline-offset-2 transition-colors block"
                     >
-                      {request.task.name}
+                      <TruncatedText
+                        value={request.task.name}
+                        className="max-w-22.5 sm:max-w-30 lg:max-w-40"
+                      />
                     </Link>
                   ) : (
                     <span>—</span>
@@ -150,7 +152,10 @@ export function HelpRequestTableView({
                         {getInitials(request.requester.name)}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="text-sm">{request.requester.name}</span>
+                    <TruncatedText
+                      value={request.requester.name}
+                      className="text-sm max-w-22.5 sm:max-w-30 lg:max-w-37.5"
+                    />
                   </div>
                 </TableCell>
 
@@ -167,7 +172,10 @@ export function HelpRequestTableView({
                           {getInitials(request.helper.name)}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="text-sm">{request.helper.name}</span>
+                      <TruncatedText
+                        value={request.helper.name}
+                        className="text-sm max-w-22.5 sm:max-w-30 lg:max-w-37.5"
+                      />
                     </div>
                   ) : (
                     <span className="text-sm text-muted-foreground">Unassigned</span>

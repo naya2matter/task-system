@@ -17,10 +17,9 @@
 //   5. Table or card grid view
 //   6. Pagination
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useCallback } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import {
   Select,
@@ -30,7 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { AlertCircle, Search, LayoutList, LayoutGrid, HelpCircle, Loader2, Plus } from "lucide-react"
+import { AlertCircle, LayoutList, LayoutGrid, HelpCircle, Loader2, Plus } from "lucide-react"
 import { Pagination } from "@/components/pagination"
 import { PaginationInfo } from "@/components/pagination-info"
 import InlineStats from "@/components/inline-stats"
@@ -60,9 +59,6 @@ import type { HelpRequest, HelpRequestRatingValue } from "@/app/help-requests/ty
 
 type ViewMode = "table" | "grid"
 
-// Debounce delay before triggering an API search request (ms)
-const SEARCH_DEBOUNCE_MS = 400
-
 // Options for the status filter (maps to derived display status values)
 const statusOptions = [
   { value: "all", label: "All Requests" },
@@ -75,8 +71,6 @@ export default function HelpRequestsPage() {
   // ── View / UI state ──────────────────────────────────────────────────────────
   const [view, setView] = useState<ViewMode>("table")
   const [activeTab, setActiveTab] = useState("all")
-  const [search, setSearch] = useState("")
-  const [debouncedSearch, setDebouncedSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [currentPage, setCurrentPage] = useState(1)
   const [availablePage, setAvailablePage] = useState(1)
@@ -111,16 +105,6 @@ export default function HelpRequestsPage() {
   // ── Mutation actions from the store ──────────────────────────────────────────
   const { claimHelpRequest, unclaimHelpRequest, deleteHelpRequest, assignHelpRequest, completeHelpRequest } = useHelpRequestMutations()
 
-  // ── Debounce search input ────────────────────────────────────────────────────
-  // Waits until user stops typing before sending the API request
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(search)
-      setCurrentPage(1) // reset to page 1 on new search
-    }, SEARCH_DEBOUNCE_MS)
-    return () => clearTimeout(timer)
-  }, [search])
-
   // Reset to page 1 whenever the status filter changes
   const handleStatusChange = useCallback((value: string) => {
     setStatusFilter(value)
@@ -133,7 +117,6 @@ export default function HelpRequestsPage() {
   const listParams = {
     page: currentPage,
     per_page: 15,
-    ...(debouncedSearch ? { search: debouncedSearch } : {}),
   }
 
   // Fetch the full paginated list from GET /help-requests
@@ -143,7 +126,6 @@ export default function HelpRequestsPage() {
   const availableParams = {
     page: availablePage,
     per_page: 15,
-    ...(debouncedSearch ? { search: debouncedSearch } : {}),
   }
   const {
     availableRequests,
@@ -306,19 +288,8 @@ export default function HelpRequestsPage() {
               />
             </div>
 
-            {/* ── Controls: search + status filter + view toggle ─────────────────────── */}
+            {/* ── Controls: status filter + view toggle ───────────────────────────────── */}
             <div className="flex items-center gap-3 flex-wrap">
-              {/* Search input */}
-              <div className="relative w-full max-w-sm sm:w-64">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-                <Input
-                  placeholder="Search requests or users..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="pl-8 h-10 text-sm"
-                />
-              </div>
-
               {/* Status filter — only show on "all" tab */}
               {activeTab === "all" && (
                 <Select value={statusFilter} onValueChange={handleStatusChange}>

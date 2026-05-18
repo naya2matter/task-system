@@ -16,26 +16,26 @@ export function AppBreadcrumbs() {
 
   return (
     <Breadcrumb>
-      <BreadcrumbList className="flex-nowrap text-sm gap-1">
+      <BreadcrumbList className="flex-nowrap text-sm gap-1 min-w-0">
         {items.map((item, index) => {
           const isLast = index === items.length - 1
 
           return (
             <Fragment key={`${item.label}-${index}`}>
-              {index > 0 && <BreadcrumbSeparator />}
-              <BreadcrumbItem>
+              {index > 0 && <BreadcrumbSeparator className="shrink-0" />}
+              <BreadcrumbItem className="min-w-0 shrink">
                 {isLast ? (
                   <BreadcrumbPage
                     className={
                       isDeep
-                        ? "font-medium text-foreground max-w-50 truncate"
-                        : "text-base font-semibold text-foreground"
+                        ? "font-medium text-foreground truncate block min-w-0"
+                        : "text-base font-semibold text-foreground truncate block min-w-0"
                     }
                   >
                     {item.label}
                   </BreadcrumbPage>
                 ) : (
-                  <BreadcrumbLink asChild className="max-w-40 truncate">
+                  <BreadcrumbLink asChild className="truncate block min-w-0 shrink">
                     <Link to={item.href!}>{item.label}</Link>
                   </BreadcrumbLink>
                 )}

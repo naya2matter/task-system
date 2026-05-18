@@ -13,19 +13,21 @@ function ClockingNotificationsProvider() {
 export default function Layout() {
   return (
     <SidebarProvider
+      className="h-dvh overflow-hidden"
       style={
         {
-          "--sidebar-width": "calc(var(--spacing) * 60)",
-          "--header-height": "calc(var(--spacing) * 12)",
+          "--sidebar-width": "16rem",
+          "--sidebar-width-icon": "72px",
+          "--header-height": "4rem",
         } as React.CSSProperties
       }
     >
       <ClockingNotificationsProvider />
       <DashboardBackground />
       <AppSidebar variant="inset" />
-      <SidebarInset>
+      <SidebarInset className="flex w-full flex-1 flex-col h-full min-h-0 overflow-hidden">
         <SiteHeader />
-        <div className="flex flex-1 flex-col overflow-hidden min-w-0">
+        <div className="flex-1 overflow-y-auto min-w-0">
           <Outlet />
         </div>
       </SidebarInset>

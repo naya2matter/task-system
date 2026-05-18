@@ -149,20 +149,25 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     .filter((section) => section.items.length > 0)
 
   return (
-    <Sidebar collapsible="offcanvas" {...props}>
+    <Sidebar
+      collapsible="icon"
+      className="shrink-0 overflow-hidden border-r border-border/20 bg-white/80 text-sidebar-foreground shadow-sm backdrop-blur-xl transition-[width] duration-300 ease-in-out dark:border-white/10 dark:bg-black/40"
+      {...props}
+    >
       {/* Header: Logo + Project Title */}
-      <SidebarHeader className="border-b border-sidebar-border px-4 py-4">
+      <SidebarHeader className="border-b border-white/10 px-3 py-3">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
+              tooltip="Task System"
               className="h-auto p-0 hover:bg-transparent group/brand"
             >
-              <Link to="/" className="flex flex-col justify-center items-center  gap-4">
-                <div className="flex items-center justify-center h-12 w-12 overflow-hidden rounded-xl bg-black/90 p-1 ring-1 ring-white/10">
+              <Link to="/" aria-label="Task System" className="flex  flex-col items-center gap-1 rounded-xl p-1 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:!gap-0 group-data-[collapsible=icon]:justify-center  group-data-[collapsible=icon]:flex-row">
+                <div className="flex shrink-0 items-center justify-center overflow-hidden rounded-xl bg-black/80 p-1 ring-1 ring-white/10 shadow-sm transition-all duration-200 h-11 w-11 group-data-[collapsible=icon]:h-8 group-data-[collapsible=icon]:w-8 group-data-[collapsible=icon]:!p-0.5  group-data-[collapsible=icon]:!mx-auto">
                   <img src={taskSystemLogo} alt="Task System" className="h-full w-full object-contain" />
                 </div>
-                <div className="flex flex-col">
+                <div className="flex flex-col transition-all duration-200 group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:-translate-x-2 group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:pointer-events-none">
                   <span className="text-sm font-semibold text-sidebar-foreground">Task System</span>
                 </div>
               </Link>
@@ -178,7 +183,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarContent>
 
       {/* Account Section + Logout Footer */}
-      <SidebarFooter className="border-t border-sidebar-border px-4 py-4">
+      <SidebarFooter className="border-t border-white/10 px-3 py-3">
         <NavUser  />
       </SidebarFooter>
     </Sidebar>

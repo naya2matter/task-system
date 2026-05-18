@@ -1,4 +1,5 @@
-﻿import { useState, useCallback } from "react"
+﻿import { useState, useCallback, memo } from "react"
+import { createPortal } from "react-dom"
 import { Card } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -10,9 +11,10 @@ import { projectService } from "../services/projectService"
 import {
   DndContext,
   DragOverlay,
-  closestCenter,
-  MouseSensor,
-  TouchSensor,
+  closestCorners,
+  MeasuringStrategy,
+  PointerSensor,
+  KeyboardSensor,
   useSensor,
   useSensors,
   useDroppable,
@@ -24,6 +26,7 @@ import {
   SortableContext,
   useSortable,
   verticalListSortingStrategy,
+  sortableKeyboardCoordinates,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 
@@ -113,7 +116,9 @@ function formatDueLabel(dateStr: string | null): string {
 
 // ── Sortable Task Card ────────────────────────────────────────────
 
-function SortableTaskCard({ task }: { task: KanbanTask }) {
+// Memoized so re-renders only occur when the task data changes,
+// not on every pointer move during a sibling card's drag.
+const SortableTaskCard = memo(function SortableTaskCard({ task }: { task: KanbanTask }) {
   const {
     attributes,
     listeners,
@@ -123,9 +128,12 @@ function SortableTaskCard({ task }: { task: KanbanTask }) {
     isDragging,
   } = useSortable({ id: String(task.id) })
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
+  const style: React.CSSProperties = {
+    // CSS.Translate (not CSS.Transform) omits the scale components dnd-kit
+    // occasionally injects, which would otherwise shift the card away from
+    // the grab point when picking up from the left edge.
+    transform: CSS.Translate.toString(transform),
+    transition: isDragging ? undefined : transition,
   }
 
   return (
@@ -134,33 +142,59 @@ function SortableTaskCard({ task }: { task: KanbanTask }) {
       style={style}
       {...attributes}
       {...listeners}
-      className={cn(isDragging && "opacity-50")}
+      className="w-full touch-none select-none"
+      aria-label={`Task: ${task.name}. Press Space or Enter to drag.`}
+      role="listitem"
     >
-      <TaskCardInner task={task} />
+      {/* When dragging, keep the same element in the DOM (preserving layout
+          height for dnd-kit measurement) but hide it visually so only the
+          DragOverlay card is visible — no duplicate ghost. */}
+      <div className={isDragging ? "invisible" : undefined}>
+        <TaskCardInner task={task} />
+      </div>
     </div>
   )
-}
+})
 
-/** Renders the visual content of a task card */
-function TaskCardInner({ task }: { task: KanbanTask }) {
+/** Renders the visual content of a task card — memoized for performance. */
+const TaskCardInner = memo(function TaskCardInner({
+  task,
+  isOverlay = false,
+}: {
+  task: KanbanTask
+  isOverlay?: boolean
+}) {
   const config = priorityConfig[task.priority] ?? priorityConfig.medium
   const isHighPriority = task.priority === "high" || task.priority === "critical"
-
-  // Count completed vs total subtasks
   const subtasksDone = task.subtasks.filter((st) => st.is_complete).length
   const subtasksTotal = task.subtasks.length
-
-  // Show first assigned user as the card avatar
   const assignee = task.assigned_users[0]
 
   return (
     <Card
       className={cn(
-        "p-4 cursor-grab active:cursor-grabbing border-l-2 transition-all hover:shadow-md",
+        "w-full p-4 border-l-2",
+        "transition-colors duration-150",
+        "hover:bg-card/80 hover:shadow-md",
         isHighPriority
-          ? "border-l-destructive/40 hover:border-l-destructive"
+          ? "border-l-destructive/50 hover:border-l-destructive"
           : "border-l-primary/40 hover:border-l-primary",
       )}
+      // Overlay styles are applied via inline style (not Tailwind scale classes)
+      // so the Card's intrinsic size remains exactly `activeTaskWidth` — the
+      // same rect dnd-kit measured on drag start. This prevents any visual
+      // offset between the cursor grab point and the floating card position.
+      style={isOverlay ? {
+        cursor: "grabbing",
+        transform: "scale(1.025) rotate(0.4deg)",
+        transformOrigin: "top left",
+        boxShadow: "0 24px 64px rgba(0,0,0,0.55), 0 0 0 1px hsl(var(--primary) / 0.4)",
+        background: "hsl(var(--card) / 0.97)",
+        backdropFilter: "blur(12px)",
+        willChange: "transform",
+      } : {
+        cursor: "grab",
+      }}
     >
       {/* Priority badge + subtask counter */}
       <div className="flex items-start justify-between mb-2">
@@ -188,16 +222,16 @@ function TaskCardInner({ task }: { task: KanbanTask }) {
           <Calendar className="size-3" />
           {formatDueLabel(task.due_date)}
         </div>
-        {assignee ? (
+        {assignee && (
           <Avatar className="size-6">
             <AvatarImage src={assignee.avatar_url ?? undefined} alt={assignee.name} />
             <AvatarFallback className="text-[8px]">{getInitials(assignee.name)}</AvatarFallback>
           </Avatar>
-        ) : null}
+        )}
       </div>
     </Card>
   )
-}
+})
 
 // ── Kanban Column ─────────────────────────────────────────────────
 
@@ -217,8 +251,8 @@ function KanbanColumnView({
     <div
       ref={setDroppableRef}
       className={cn(
-        "flex flex-col min-w-[280px] max-w-[320px] w-full bg-card/50 rounded-xl border border-border/50",
-        showOver ? "ring-2 ring-primary/30 shadow-lg" : "",
+        "flex flex-col min-w-[280px] max-w-[320px] w-full bg-card/50 rounded-xl border transition-all duration-200",
+        showOver ? "ring-2 ring-primary border-primary/50 shadow-lg bg-card/80 scale-[1.01]" : "border-border/50",
       )}
     >
       {/* Column header */}
@@ -252,15 +286,23 @@ export function KanbanBoard({ kanban, onBack }: KanbanBoardProps) {
     buildBoardSections(kanban.sections),
   )
   const [activeTask, setActiveTask] = useState<KanbanTask | null>(null)
+  const [activeTaskWidth, setActiveTaskWidth] = useState<number | null>(null)
   const [hoveredColumn, setHoveredColumn] = useState<string | null>(null)
 
   const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } })
+    // PointerSensor: 4px activation distance prevents accidental drags on click.
+    // Covers mouse, touch, and pen input uniformly — no separate MouseSensor /
+    // TouchSensor needed, which previously diverged in grab-point calculation.
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    // KeyboardSensor: enables accessible drag-and-drop via keyboard.
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
 
   // Find the task being dragged across all sections/columns
   const handleDragStart = useCallback((event: DragStartEvent) => {
+    const draggedWidth = event.active.rect.current.initial?.width
+    setActiveTaskWidth(typeof draggedWidth === "number" ? draggedWidth : null)
+
     const taskId = String(event.active.id)
     for (const section of sections) {
       for (const col of section.columns) {
@@ -305,6 +347,7 @@ export function KanbanBoard({ kanban, onBack }: KanbanBoardProps) {
   // Move the task to the target column/position when dropped
   const handleDragEnd = useCallback((event: DragEndEvent) => {
     setActiveTask(null)
+    setActiveTaskWidth(null)
     setHoveredColumn(null)
     const { active, over } = event
     if (!over || active.id === over.id) return
@@ -449,7 +492,12 @@ export function KanbanBoard({ kanban, onBack }: KanbanBoardProps) {
       {/* Board with drag-and-drop */}
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCenter}
+        collisionDetection={closestCorners}
+        measuring={{
+          droppable: {
+            strategy: MeasuringStrategy.Always,
+          },
+        }}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
@@ -464,8 +512,11 @@ export function KanbanBoard({ kanban, onBack }: KanbanBoardProps) {
                 </h3>
               </div>
 
-              {/* Status columns */}
-              <div className="flex gap-4 overflow-x-auto pb-4 min-h-0">
+              {/* Status columns — horizontal scroll with smooth behavior.
+                  Each column is fixed-width (w-72) so layout never shifts
+                  during drag, and flex-shrink-0 prevents columns from
+                  collapsing on smaller screens. */}
+              <div className="flex gap-3 overflow-x-auto pb-3 pt-2 px-1 scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:none]">
                 {section.columns.map((col) => (
                   <KanbanColumnView key={col.id} column={col} isOver={hoveredColumn === col.id} />
                 ))}
@@ -474,25 +525,44 @@ export function KanbanBoard({ kanban, onBack }: KanbanBoardProps) {
           ))}
         </div>
 
-        {/* Drag overlay — follows the cursor while dragging */}
-        <DragOverlay>
-          {activeTask && (
-            <div className="w-72">
-              <div className="text-xs text-muted-foreground mb-2">
-                {hoveredColumn
-                  ? `Move to: ${(() => {
-                      for (const s of sections) {
-                        const c = s.columns.find((x) => x.id === hoveredColumn)
-                        if (c) return c.title
-                      }
-                      return hoveredColumn
-                    })()}`
-                  : "Dragging"}
+        {/*
+          DragOverlay — the key rules for correct cursor alignment:
+
+          1. adjustScale={false} — do NOT let dnd-kit rescale the overlay;
+             any visual scale must be applied only to content inside, not the
+             wrapper that dnd-kit measures for positioning.
+
+          2. The wrapper div must contain ONLY the card — no labels, no extra
+             padding, no elements that push the card away from the top edge.
+             Previously a "Drop into: X" label sat above the card, shifting it
+             ~20px down from where dnd-kit expected it, causing the visible
+             disconnect when grabbing from the left side.
+
+          3. Width is read from the actual card rect on drag start so the
+             overlay is dimensionally identical to the original card.
+        */}
+        {typeof document !== "undefined" && createPortal(
+          <DragOverlay
+            adjustScale={false}
+            zIndex={100}
+            dropAnimation={{
+              duration: 200,
+              easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+            }}
+          >
+            {activeTask && (
+              <div
+                className="pointer-events-none"
+                style={{
+                  width: activeTaskWidth ?? 288,
+                }}
+              >
+                <TaskCardInner task={activeTask} isOverlay />
               </div>
-              <TaskCardInner task={activeTask} />
-            </div>
-          )}
-        </DragOverlay>
+            )}
+          </DragOverlay>,
+          document.body,
+        )}
       </DndContext>
     </div>
   )

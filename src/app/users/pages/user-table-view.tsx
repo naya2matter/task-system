@@ -9,6 +9,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { TruncatedText } from "@/components/ui/truncated-text"
 import { Pencil, Trash2, Shield, Code } from "lucide-react"
 import type { User } from "@/app/users/data"
 
@@ -47,7 +48,7 @@ const statusVariant: Record<string, "default" | "secondary" | "destructive" | "o
 
 export function UserTableView({ users, onEdit, onDelete, onSelect, canEdit = true, canDelete = true, canView = true }: UserTableViewProps) {
   return (
-    <Table>
+    <Table className="w-full table-fixed">
       <TableHeader>
         <TableRow>
           <TableHead>User</TableHead>
@@ -93,18 +94,29 @@ export function UserTableView({ users, onEdit, onDelete, onSelect, canEdit = tru
                     className="font-medium text-foreground text-base sm:text-lg hover:text-primary hover:underline underline-offset-2 transition-colors text-left"
                     onClick={() => onSelect(user)}
                   >
-                    {user.name}
+                    <TruncatedText
+                      value={user.name}
+                      className="max-w-30 sm:max-w-45 lg:max-w-60"
+                    />
                   </button>
                 ) : (
-                  <span className="font-medium text-foreground text-base sm:text-lg">
-                    {user.name}
-                  </span>
+                  <TruncatedText
+                    value={user.name}
+                    className="font-medium text-foreground text-base sm:text-lg max-w-30 sm:max-w-45 lg:max-w-60"
+                  />
                 )}
               </div>
             </TableCell>
-            <TableCell className="text-muted-foreground py-3 text-sm">{user.email}</TableCell>
+            <TableCell className="text-muted-foreground py-3 text-sm">
+              <TruncatedText
+                value={user.email}
+                className="max-w-35 sm:max-w-55 lg:max-w-70"
+              />
+            </TableCell>
             <TableCell className="py-3">
-              <Badge variant="secondary">{user.role}</Badge>
+              <Badge variant="secondary" className="max-w-30">
+                <TruncatedText value={user.role} className="max-w-25" />
+              </Badge>
             </TableCell>
             <TableCell className="py-3">
               <Badge variant={statusVariant[user.status] ?? "outline"}>

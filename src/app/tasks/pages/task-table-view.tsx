@@ -15,6 +15,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { TruncatedText } from "@/components/ui/truncated-text"
 import { MoreHorizontal, Star, Pencil, Trash2, Eye, CheckSquare } from "lucide-react"
 // Use the API-aligned Task type (not the mock from data.ts)
 import type { Task } from "@/app/tasks/types"
@@ -109,7 +110,7 @@ function SubtasksProgress({
         : "bg-muted-foreground/30"
 
   return (
-    <div className="flex flex-col gap-1 min-w-[60px]">
+    <div className="flex flex-col gap-1 min-w-15">
       {/* Fraction label */}
       <span
         className={`text-xs font-semibold ${
@@ -135,13 +136,12 @@ function SubtasksProgress({
 
 export function TaskTableView({ tasks, onSelect, onEdit, onDelete, onRate, canEdit, canDelete, canRate }: TaskTableViewProps) {
   return (
-    // overflow-hidden prevents horizontal scroll; columns collapse via responsive classes
-    <div className="w-full overflow-hidden">
-      <Table>
+    <div className="w-full">
+      <Table scrollable={false} className="w-full table-fixed">
         <TableHeader>
           <TableRow>
             {/* Always visible */}
-            <TableHead className="min-w-[160px]">Task</TableHead>
+            <TableHead className="min-w-40">Task</TableHead>
             <TableHead>Status</TableHead>
 
             {/* Hidden on xs, visible from sm up */}
@@ -189,10 +189,13 @@ export function TaskTableView({ tasks, onSelect, onEdit, onDelete, onRate, canEd
                   <div className="flex flex-col gap-0.5">
                     <button
                       type="button"
-                      className="font-medium text-foreground text-sm hover:text-primary hover:underline underline-offset-2 transition-colors text-left line-clamp-2"
+                      className="font-medium text-foreground text-sm hover:text-primary hover:underline underline-offset-2 transition-colors text-left"
                       onClick={() => onSelect(task)}
                     >
-                      {task.name}
+                      <TruncatedText
+                        value={task.name}
+                        className="max-w-42.5 sm:max-w-60 lg:max-w-80"
+                      />
                     </button>
                     <span className="text-xs text-muted-foreground font-mono">#{task.id}</span>
                   </div>
@@ -236,9 +239,12 @@ export function TaskTableView({ tasks, onSelect, onEdit, onDelete, onRate, canEd
 
                 {/*  Project badge â€” hidden below lg  */}
                 <TableCell className="hidden lg:table-cell py-3">
-                  <div className="max-w-[180px] overflow-hidden">
-                    <Badge variant="secondary" className="text-xs truncate block text-left" title={projectName}>
-                      {projectName}
+                  <div className="max-w-45 overflow-hidden">
+                    <Badge variant="secondary" className="text-xs block text-left">
+                      <TruncatedText
+                        value={projectName}
+                        className="max-w-30 xl:max-w-42.5"
+                      />
                     </Badge>
                   </div>
                 </TableCell>

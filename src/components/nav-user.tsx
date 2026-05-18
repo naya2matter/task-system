@@ -13,10 +13,14 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { useAuth } from "@/app/(auth)/hooks/useAuth"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { useSidebar } from "@/components/ui/sidebar"
 
 export function NavUser() {
   const {logout, isLoading } = useAuth()
   const [open, setOpen] = useState(false)
+  const { state, isMobile } = useSidebar()
+  const isCollapsed = state === "collapsed" && !isMobile
 
  
 
@@ -35,16 +39,24 @@ export function NavUser() {
 
       {/* Logout Button + Confirm Dialog */}
       <AlertDialog open={open} onOpenChange={setOpen}>
-        <AlertDialogTrigger asChild>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start gap-2 text-sidebar-foreground hover:bg-destructive/10 hover:text-destructive"
-          >
-            <LogOut className="size-4" />
-            <span className="text-sm">Log out</span>
-          </Button>
-        </AlertDialogTrigger>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                aria-label="Log out"
+                className="w-full h-8 justify-start gap-2 text-sidebar-foreground hover:bg-destructive/10 hover:text-destructive group-data-[collapsible=icon]:!gap-0 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0!"
+              >
+                <LogOut className="size-4" />
+                <span className="text-sm transition-all duration-200 group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:-translate-x-2 group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:pointer-events-none">
+                  Log out
+                </span>
+              </Button>
+            </AlertDialogTrigger>
+          </TooltipTrigger>
+          {isCollapsed && <TooltipContent side="right">Log out</TooltipContent>}
+        </Tooltip>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Sign out?</AlertDialogTitle>

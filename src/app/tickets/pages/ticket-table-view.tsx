@@ -32,6 +32,7 @@ import {
   CheckCircle2,
   ArrowUpDown,
 } from "lucide-react"
+import { TruncatedText } from "@/components/ui/truncated-text"
 // Import API-aligned type and display helpers from the tickets types module
 import type { ApiTicket } from "@/app/tickets/types"
 import {
@@ -88,7 +89,7 @@ export function TicketTableView({
   return (
     // Wrap in overflow-x-auto so the table stays scrollable on small screens
     <div className="w-full overflow-x-auto rounded-md border">
-      <Table>
+      <Table className="w-full table-fixed">
         <TableHeader>
           <TableRow>
             <TableHead className="w-12">ID</TableHead>
@@ -130,30 +131,24 @@ export function TicketTableView({
 
               {/* Title — clickable to open the detail sheet */}
               <TableCell className="py-3 max-w-45">
-                <div className="relative overflow-hidden">
-                  <button
-                    type="button"
-                    className="font-medium text-foreground text-sm hover:text-primary hover:underline underline-offset-2 transition-colors w-full text-left line-clamp-2"
-                    onClick={() => onSelect(ticket)}
-                  >
-                    {ticket.title}
-                  </button>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 w-12">
-                    <div className="h-full w-full bg-linear-to-l from-background via-background/70 to-transparent backdrop-blur-[1px]" />
-                  </div>
-                </div>
+                <button
+                  type="button"
+                  className="font-medium text-foreground text-sm hover:text-primary hover:underline underline-offset-2 transition-colors w-full text-left"
+                  onClick={() => onSelect(ticket)}
+                >
+                  <TruncatedText
+                    value={ticket.title}
+                    className="max-w-35 sm:max-w-55 lg:max-w-75"
+                  />
+                </button>
               </TableCell>
 
-              {/* Description — truncated with fade overlay */}
+              {/* Description — single-line ellipsis with tooltip */}
               <TableCell className="py-3 max-w-65 hidden lg:table-cell">
-                <div className="relative overflow-hidden">
-                  <p className="text-sm text-muted-foreground line-clamp-2">
-                    {ticket.description}
-                  </p>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 w-14">
-                    <div className="h-full w-full bg-linear-to-l from-background via-background/60 to-transparent backdrop-blur-[1px]" />
-                  </div>
-                </div>
+                <TruncatedText
+                  value={ticket.description}
+                  className="text-sm text-muted-foreground max-w-55 xl:max-w-90"
+                />
               </TableCell>
 
               {/* Type — maps backend enum key to human label */}
@@ -190,11 +185,17 @@ export function TicketTableView({
                         {getInitials(ticket.requester.name)}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="text-sm">{ticket.requester.name}</span>
+                    <TruncatedText
+                      value={ticket.requester.name}
+                      className="text-sm max-w-25 xl:max-w-35"
+                    />
                   </div>
                 ) : (
                   // Fallback to requester_name if relation was not loaded
-                  <span className="text-sm text-muted-foreground">{ticket.requester_name}</span>
+                  <TruncatedText
+                    value={ticket.requester_name}
+                    className="text-sm text-muted-foreground max-w-25 xl:max-w-35"
+                  />
                 )}
               </TableCell>
 
@@ -211,7 +212,10 @@ export function TicketTableView({
                         {getInitials(ticket.assignee.name)}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="text-sm">{ticket.assignee.name}</span>
+                    <TruncatedText
+                      value={ticket.assignee.name}
+                      className="text-sm max-w-25 xl:max-w-35"
+                    />
                   </div>
                 ) : (
                   <span className="text-sm text-muted-foreground">Unassigned</span>

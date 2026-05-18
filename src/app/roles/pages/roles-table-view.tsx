@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { TruncatedText } from "@/components/ui/truncated-text"
 import { Pencil, Trash2, Shield } from "lucide-react"
 import type { Role } from "@/types"
 import { usePermissions } from "@/hooks/usePermissions"
@@ -47,7 +48,7 @@ export function RolesTableView({
   }
 
   return (
-    <Table>
+    <Table className="w-full table-fixed">
       <TableHeader>
         <TableRow>
           <TableHead>Role Name</TableHead>
@@ -70,7 +71,10 @@ export function RolesTableView({
                   className="font-medium text-foreground text-base hover:text-primary hover:underline underline-offset-2 transition-colors text-left"
                   onClick={() => onSelect(role)}
                 >
-                  {role.name}
+                  <TruncatedText
+                    value={role.name}
+                    className="max-w-37.5 sm:max-w-55 lg:max-w-75"
+                  />
                 </button>
               </div>
             </TableCell>
@@ -83,7 +87,7 @@ export function RolesTableView({
             </TableCell>
             <TableCell className="py-3">
               <Badge variant="outline" className="font-mono text-xs">
-                {role.guard_name}
+                <TruncatedText value={role.guard_name} className="max-w-20 sm:max-w-30" />
               </Badge>
             </TableCell>
             <TableCell className="text-muted-foreground py-3 text-sm">

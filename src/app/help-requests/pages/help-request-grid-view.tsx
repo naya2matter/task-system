@@ -5,6 +5,11 @@
 import type { HelpRequest } from "@/app/help-requests/types"
 import { HelpRequestCard } from "@/app/help-requests/pages/help-request-card"
 
+function truncateWithFullStops(text: string, maxChars: number) {
+  if (text.length <= maxChars) return text
+  return `${text.slice(0, maxChars).trimEnd()}...`
+}
+
 type HelpRequestGridViewProps = {
   requests: HelpRequest[]
   onSelect: (request: HelpRequest) => void
@@ -33,7 +38,16 @@ export function HelpRequestGridView({
       {requests.map((request) => (
         <HelpRequestCard
           key={request.id}
-          request={request}
+          request={{
+            ...request,
+            description: truncateWithFullStops(request.description, 110),
+            task: request.task
+              ? {
+                  ...request.task,
+                  name: truncateWithFullStops(request.task.name, 28),
+                }
+              : null,
+          }}
           onSelect={onSelect}
           onEdit={onEdit}
           onDelete={onDelete}

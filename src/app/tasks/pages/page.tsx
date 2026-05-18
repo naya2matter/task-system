@@ -75,13 +75,7 @@ const statusOptions: { value: TaskStatus | "all"; label: string }[] = [
 ]
 
 // Priority options that match the API enum values (plus "all" for no filter)
-const priorityOptions: { value: TaskPriority | "all"; label: string }[] = [
-  { value: "all", label: "All Priority" },
-  { value: "critical", label: "Critical" },
-  { value: "high", label: "High" },
-  { value: "medium", label: "Medium" },
-  { value: "low", label: "Low" },
-]
+
 
 // Debounce delay for the search input to avoid a request on every keystroke
 const SEARCH_DEBOUNCE_MS = 400
@@ -284,10 +278,7 @@ export default function TasksPage() {
     setCurrentPage(1)
   }, [])
 
-  const handlePriorityChange = useCallback((value: string) => {
-    setPriorityFilter(value as TaskPriority | "all")
-    setCurrentPage(1)
-  }, [])
+  
 
   // Toggle a single user in/out of the assignee filter
   function toggleAssignee(userId: number) {
@@ -424,7 +415,7 @@ export default function TasksPage() {
           </Select>
 
           {/* Priority filter — sent to the API as the `priority` query param */}
-          <Select value={priorityFilter} onValueChange={handlePriorityChange}>
+          {/* <Select value={priorityFilter} onValueChange={handlePriorityChange}>
             <SelectTrigger className="w-36 h-9 text-sm">
               <SelectValue />
             </SelectTrigger>
@@ -435,7 +426,7 @@ export default function TasksPage() {
                 </SelectItem>
               ))}
             </SelectContent>
-          </Select>
+          </Select> */}
 
           {/* Due-from date — opens the native browser date picker via DateInput */}
           <div className="flex items-center gap-1.5">
