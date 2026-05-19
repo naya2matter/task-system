@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react"
-import { useNavigate, useSearchParams, useLocation } from "react-router"
+import { useNavigate, useSearchParams, useLocation, useParams } from "react-router"
+import { useTask } from "@/app/tasks/hooks/useTask"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -93,6 +94,13 @@ function getInitials(name: string) {
 export default function TasksPage() {
   const navigate = useNavigate()
   const location = useLocation()
+  const { id: urlId } = useParams<{ id?: string }>()
+
+  // Determine if we are on a sub-route (/tasks/create, /tasks/:id/edit, /tasks/:id/rate)
+  const isCreateRoute = location.pathname.endsWith("/create")
+  const isEditRoute   = !!urlId && location.pathname.endsWith("/edit")
+  const isRateRoute   = !!urlId && location.pathname.endsWith("/rate")
+  const taskIdFromUrl = urlId ? parseInt(urlId, 10) : null
 
   const { hasPermission } = usePermissions()
   const canCreate = hasPermission("create tasks")
@@ -103,8 +111,14 @@ export default function TasksPage() {
 
   // ── View + UI state ──────────────────────────────────────────────
   const [view, setView] = useState<ViewMode>("table")
-  const [pageView, setPageView] = useState<PageView>("list")
-  const [formMode, setFormMode] = useState<"create" | "edit">("create")
+  const [pageView, setPageView] = useState<PageView>(() => {
+    if (isCreateRoute || isEditRoute) return "form"
+    if (isRateRoute) return "rating"
+    return "list"
+  })
+  const [formMode, setFormMode] = useState<"create" | "edit">(() =>
+    isEditRoute ? "edit" : "create"
+  )
 
   // ── Filter state (local) — all of these are forwarded to GET /tasks ──────
   const [search, setSearch] = useState("")
@@ -121,14 +135,47 @@ export default function TasksPage() {
   const [currentPage, setCurrentPage] = useState(1)
 
   // ── Selected task state ──────────────────────────────────────────
-  // The task currently being edited (null = create mode)
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null)
+  // The task currently being edited (null = create mode).
+  // Seed from navigation state so the form is available instantly.
+  const [selectedTask, setSelectedTask] = useState<Task | null>(
+    () => (location.state as TaskFormLocationState | null)?.editTask ?? null
+  )
   // Default section/project ids pre-populated when opening create from a section card
-  const [defaultSectionId, setDefaultSectionId] = useState<number | undefined>(undefined)
-  const [defaultProjectId, setDefaultProjectId] = useState<number | undefined>(undefined)
+  const [defaultSectionId] = useState<number | undefined>(
+    () => (location.state as TaskFormLocationState | null)?.defaultSectionId
+  )
+  const [defaultProjectId] = useState<number | undefined>(
+    () => (location.state as TaskFormLocationState | null)?.defaultProjectId
+  )
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deleteTask, setDeleteTask] = useState<Task | null>(null)
-  const [ratingTask, setRatingTask] = useState<Task | null>(null)
+  const [ratingTask, setRatingTask] = useState<Task | null>(() =>
+    (location.state as { ratingTask?: Task } | null)?.ratingTask ?? null
+  )
+
+  // Fetch the task from the API when navigating directly to /tasks/:id/edit or /tasks/:id/rate.
+  // This also populates selectedTask in the store so the breadcrumb shows the task name.
+  const { task: urlTask } = useTask((isEditRoute || isRateRoute) ? taskIdFromUrl : null)
+
+  // Once the task loads (direct-URL access), hydrate local state if not already seeded
+  useEffect(() => {
+    if (!urlTask) return
+    if (isEditRoute && !selectedTask) setSelectedTask(urlTask)
+    if (isRateRoute && !ratingTask) setRatingTask(urlTask)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlTask])
+
+  useEffect(() => {
+    if (isCreateRoute || isEditRoute) {
+      setPageView("form")
+      setFormMode(isEditRoute ? "edit" : "create")
+    } else if (isRateRoute) {
+      setPageView("rating")
+      setFormMode("create")
+    } else {
+      setPageView("list")
+    }
+  }, [isCreateRoute, isEditRoute, isRateRoute])
 
   // Hook for DELETE /tasks/{id}
   const { deleteTask: deleteTaskById, deleting } = useDeleteTask()
@@ -153,29 +200,11 @@ export default function TasksPage() {
     }
   }, [searchParams])
 
-  // Consume location.state when navigating here from a section card.
-  // We read the state once on mount, apply it, then clear it so the form
-  // doesn't re-open if the user navigates back/forward through history.
+  // Clear location.state after consuming it so back-navigation doesn't re-trigger forms
   useEffect(() => {
-    const state = location.state as TaskFormLocationState | null
-    if (!state?.openForm) return
-
-    if (state.openForm === "create") {
-      // Pre-seed section/project selectors and open the create form
-      setDefaultSectionId(state.defaultSectionId)
-      setDefaultProjectId(state.defaultProjectId)
-      setSelectedTask(null)
-      setFormMode("create")
-      setPageView("form")
-    } else if (state.openForm === "edit" && state.editTask) {
-      // Task was already fetched by the caller — open the edit form directly
-      setSelectedTask(state.editTask)
-      setFormMode("edit")
-      setPageView("form")
+    if (location.state) {
+      navigate(location.pathname + location.search, { replace: true, state: null })
     }
-
-    // Clear the consumed state so back-navigation doesn't re-trigger the form
-    navigate(location.pathname + location.search, { replace: true, state: null })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -220,15 +249,11 @@ export default function TasksPage() {
   // ── Handlers ─────────────────────────────────────────────────────
 
   function handleCreate() {
-    setSelectedTask(null)
-    setFormMode("create")
-    setPageView("form")
+    navigate("/tasks/create")
   }
 
   function handleEdit(task: Task) {
-    setSelectedTask(task)
-    setFormMode("edit")
-    setPageView("form")
+    navigate(`/tasks/${task.id}/edit`, { state: { editTask: task } })
   }
 
   function handleDelete(task: Task) {
@@ -252,24 +277,16 @@ export default function TasksPage() {
   }
 
   function handleRate(task: Task) {
-    setRatingTask(task)
-    setPageView("rating")
+    navigate(`/tasks/${task.id}/rate`, { state: { ratingTask: task } })
   }
 
   function handleFormCancel() {
-    // Navigate back to the originating page (e.g. project details) when
-    // the form was opened via location.state from a section card.
     const returnTo = (location.state as TaskFormLocationState | null)?.returnTo
-    if (returnTo) {
-      navigate(returnTo)
-    } else {
-      setPageView("list")
-    }
+    navigate(returnTo ?? "/tasks")
   }
 
   function handleRatingCancel() {
-    setPageView("list")
-    setRatingTask(null)
+    navigate("/tasks")
   }
 
   // Reset to page 1 whenever a filter select changes
@@ -303,13 +320,8 @@ export default function TasksPage() {
         defaultSectionId={defaultSectionId}
         defaultProjectId={defaultProjectId}
         onSubmit={() => {
-          if (returnTo) {
-            navigate(returnTo)
-          } else {
-            setPageView("list")
-            setSelectedTask(null)
-            refetch()
-          }
+          refetch()
+          navigate(returnTo ?? "/tasks")
         }}
         onCancel={handleFormCancel}
       />
@@ -321,9 +333,7 @@ export default function TasksPage() {
       <TaskRatingForm
         task={ratingTask}
         onSubmit={() => {
-          setPageView("list")
-          setRatingTask(null)
-          refetch()
+          navigate("/tasks")
         }}
         onCancel={handleRatingCancel}
       />
@@ -428,7 +438,7 @@ export default function TasksPage() {
             </SelectContent>
           </Select> */}
 
-          {/* Due-from date — opens the native browser date picker via DateInput */}
+          {/* Due-from date filter */}
           <div className="flex items-center gap-1.5">
             <span className="text-xs text-muted-foreground whitespace-nowrap">From</span>
             <DateInput

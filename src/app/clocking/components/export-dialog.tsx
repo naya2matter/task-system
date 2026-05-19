@@ -59,15 +59,15 @@ export function ExportDialog({ open, onOpenChange }: ExportDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 w-fit">
-            <FileArchive className="size-3 text-primary" />
-            <span className="text-[10px] font-bold uppercase tracking-widest text-primary">
+      <DialogContent className="max-w-130 p-6">
+        <DialogHeader className="gap-3">
+          <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-red-500/20 bg-red-500/10 px-3 py-1 w-fit">
+            <FileArchive className="size-3 text-red-400" />
+            <span className="text-[10px] font-bold uppercase tracking-widest text-red-400">
               Export Records
             </span>
           </div>
-          <DialogTitle className="text-2xl font-black tracking-tighter">
+          <DialogTitle className="text-3xl font-black tracking-tight">
             Export Clocking Records
           </DialogTitle>
           <DialogDescription className="text-sm text-muted-foreground">
@@ -76,34 +76,32 @@ export function ExportDialog({ open, onOpenChange }: ExportDialogProps) {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-5 pt-2">
+        <div className="space-y-5 pt-4">
           {/* Start date */}
-          <div>
-            <label className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          <div className="space-y-2">
+            <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
               Start Date (optional)
             </label>
-            <div className="group relative overflow-hidden rounded-t-xl bg-muted/40 ring-1 ring-border/30 transition-all focus-within:ring-primary">
+            <div className="rounded-2xl border border-border/20 bg-muted/40 transition-colors focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20">
               <DateInput
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full border-none bg-transparent px-4 py-3.5 text-sm text-foreground outline-none"
+                className="w-full border-none bg-transparent px-4 py-3 text-sm text-foreground outline-none"
               />
-              <div className="absolute bottom-0 left-0 h-0.5 w-full bg-border/40 transition-colors group-focus-within:bg-primary" />
             </div>
           </div>
 
           {/* End date */}
-          <div>
-            <label className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+          <div className="space-y-2">
+            <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
               End Date (optional)
             </label>
-            <div className="group relative overflow-hidden rounded-t-xl bg-muted/40 ring-1 ring-border/30 transition-all focus-within:ring-primary">
+            <div className="rounded-2xl border border-border/20 bg-muted/40 transition-colors focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20">
               <DateInput
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="w-full border-none bg-transparent px-4 py-3.5 text-sm text-foreground outline-none"
+                className="w-full border-none bg-transparent px-4 py-3 text-sm text-foreground outline-none"
               />
-              <div className="absolute bottom-0 left-0 h-0.5 w-full bg-border/40 transition-colors group-focus-within:bg-primary" />
             </div>
           </div>
 

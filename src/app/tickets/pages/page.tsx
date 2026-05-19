@@ -19,7 +19,8 @@
 //
 // UI updates happen instantly via Zustand store patches — no page refresh needed.
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
+import { useNavigate, useLocation, useParams } from "react-router"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -42,6 +43,7 @@ import { usePermissions } from "@/hooks/usePermissions"
 // API hooks — each connects to a different read endpoint
 import { useTickets } from "@/app/tickets/hooks/useTickets"
 import { useAvailableTickets } from "@/app/tickets/hooks/useAvailableTickets"
+import { useTicket } from "@/app/tickets/hooks/useTicket"
 
 // Write actions from the central Zustand store
 import { useTicketsStore } from "@/app/tickets/store/ticketStore"
@@ -84,15 +86,25 @@ const typeOptions: { value: ApiTicketType | "all"; label: string }[] = [
 ]
 
 export default function TicketsPage() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const { id: urlId } = useParams<{ id?: string }>()
+  const isCreateRoute = location.pathname.endsWith("/create")
+  const isEditRoute = !!urlId && location.pathname.endsWith("/edit")
+  const isDetailRoute = !!urlId && !location.pathname.endsWith("/edit") && !location.pathname.endsWith("/create")
+  const ticketIdFromUrl = urlId ? parseInt(urlId, 10) : null
+
   // ── View / layout ────────────────────────────────────────────────────────────
-  const [pageView, setPageView]   = useState<PageView>("list")
+  const [pageView, setPageView]   = useState<PageView>(() =>
+    isCreateRoute || isEditRoute ? "form" : "list"
+  )
   const [layout, setLayout]       = useState<LayoutMode>("table")
   const [activeTab, setActiveTab] = useState("all")
 
   // ── Permission checks ────────────────────────────────────────────────────────
-  const { hasPermission, hasAnyPermission } = usePermissions()
+  const { hasPermission } = usePermissions()
   const canEdit   = hasPermission("edit tickets")
-  const canCreate = hasAnyPermission(["view tickets", "create help requests"])
+  const canCreate = hasPermission("create help requests")
 
   // ── Search (client-side on currently-loaded page) ─────────────────────────
   const [search, setSearch] = useState("")
@@ -116,8 +128,54 @@ export default function TicketsPage() {
 
   // ── Form state ────────────────────────────────────────────────────────────
   // editTicket stores the full ticket when switching to edit mode
-  const [formMode,   setFormMode]   = useState<"create" | "edit">("create")
-  const [editTicket, setEditTicket] = useState<ApiTicket | null>(null)
+  const [formMode,   setFormMode]   = useState<"create" | "edit">(
+    isEditRoute ? "edit" : "create"
+  )
+  const [editTicket, setEditTicket] = useState<ApiTicket | null>(() =>
+    (location.state as { editTicket?: ApiTicket } | null)?.editTicket ?? null
+  )
+
+  const { ticket: urlTicket } = useTicket(ticketIdFromUrl)
+
+  useEffect(() => {
+    if (!urlTicket) return
+    if (isEditRoute && !editTicket) {
+      setEditTicket(urlTicket)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [urlTicket])
+
+  useEffect(() => {
+    if (isCreateRoute) {
+      setFormMode("create")
+      setEditTicket(null)
+    } else if (isEditRoute) {
+      setFormMode("edit")
+    } else {
+      setFormMode("create")
+      setEditTicket(null)
+    }
+  }, [isCreateRoute, isEditRoute])
+
+  useEffect(() => {
+    setPageView(isCreateRoute || isEditRoute ? "form" : "list")
+  }, [isCreateRoute, isEditRoute])
+
+  useEffect(() => {
+    if (isDetailRoute && ticketIdFromUrl !== null) {
+      setSheetTicketId(ticketIdFromUrl)
+      setSheetOpen(true)
+    } else if (!isDetailRoute) {
+      setSheetOpen(false)
+    }
+  }, [isDetailRoute, ticketIdFromUrl])
+
+  function handleSheetOpenChange(open: boolean) {
+    if (!open && isDetailRoute) {
+      navigate("/tickets")
+    }
+    setSheetOpen(open)
+  }
 
   // ── Assign dialog state ───────────────────────────────────────────────────
   const [assignDialogOpen,   setAssignDialogOpen]   = useState(false)
@@ -227,12 +285,11 @@ export default function TicketsPage() {
     setAvailablePage(1)
   }
 
-  // ── Detail sheet handlers ─────────────────────────────────────────────────
+  // ── Detail page navigation handlers ───────────────────────────────────────
 
-  // Open the detail sheet — stores only the ID; sheet fetches full data
+  // Navigate to the ticket detail page
   function handleSelect(ticket: ApiTicket) {
-    setSheetTicketId(ticket.id)
-    setSheetOpen(true)
+    navigate(`/tickets/${ticket.id}`)
   }
 
   // ── Form navigation handlers ──────────────────────────────────────────────
@@ -240,43 +297,39 @@ export default function TicketsPage() {
   // Navigate to the form view in create mode
   function handleCreate() {
     clearSubmitError()
-    setEditTicket(null)
-    setFormMode("create")
-    setPageView("form")
+    navigate("/tickets/create")
   }
 
   // Navigate to the form view in edit mode, pre-filling with the ticket data
   function handleEdit(ticket: ApiTicket) {
     clearSubmitError()
-    setEditTicket(ticket)
-    setFormMode("edit")
-    setPageView("form")
+    navigate(`/tickets/${ticket.id}/edit`, { state: { editTicket: ticket } })
   }
 
   // Return to list without submitting
   function handleFormCancel() {
-    setPageView("list")
     setEditTicket(null)
+    navigate("/tickets")
   }
 
   // ── Form submit handler ───────────────────────────────────────────────────
   // Called by TicketForm with the collected values; dispatches to store
   async function handleFormSubmit(values: TicketFormValues) {
     if (formMode === "create") {
-      // POST /tickets — create new ticket
       const success = await createTicket(values)
       if (success) {
-        setPageView("list")
         setEditTicket(null)
+        return true
       }
     } else if (editTicket) {
-      // POST /tickets/{id} — update existing ticket
       const success = await updateTicket(editTicket.id, values)
       if (success) {
-        setPageView("list")
         setEditTicket(null)
+        return true
       }
     }
+
+    return false
   }
 
   // ── Quick action handlers ─────────────────────────────────────────────────
@@ -413,7 +466,10 @@ export default function TicketsPage() {
         mode={formMode}
         // Pass the full ticket for edit, null for create
         initialData={editTicket}
-        onSubmit={handleFormSubmit}
+        onSubmit={async (values) => {
+          const success = await handleFormSubmit(values)
+          if (success) navigate("/tickets")
+        }}
         onCancel={handleFormCancel}
         submitting={submitting}
         submitError={submitError}
@@ -714,7 +770,7 @@ export default function TicketsPage() {
       <TicketDetailSheet
         ticketId={sheetTicketId}
         open={sheetOpen}
-        onOpenChange={setSheetOpen}
+        onOpenChange={handleSheetOpenChange}
         onEdit={handleEdit}
         onClaim={handleClaim}
         onUnclaim={(t) => handleUnassign(t)}

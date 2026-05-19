@@ -1,13 +1,26 @@
 ﻿import { useState, useCallback, memo } from "react"
 import { createPortal } from "react-dom"
+import { useNavigate } from "react-router"
+import { isCancel } from "axios"
+import { toast } from "sonner"
 import { Card } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Calendar, CheckSquare } from "lucide-react"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { ArrowLeft, Calendar, CheckSquare, Loader2, MoreHorizontal, Pencil, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { KanbanData, KanbanTask, KanbanSectionData } from "../types"
 import { projectService } from "../services/projectService"
+import { taskService } from "@/app/tasks/services/taskService"
+import { useDeleteTask } from "@/app/tasks/hooks/useDeleteTask"
+import { ConfirmDeleteTaskDialog } from "@/app/tasks/pages/confirm-delete-task-dialog"
+import type { Task } from "@/app/tasks/types"
 import {
   DndContext,
   DragOverlay,
@@ -118,7 +131,17 @@ function formatDueLabel(dateStr: string | null): string {
 
 // Memoized so re-renders only occur when the task data changes,
 // not on every pointer move during a sibling card's drag.
-const SortableTaskCard = memo(function SortableTaskCard({ task }: { task: KanbanTask }) {
+const SortableTaskCard = memo(function SortableTaskCard({
+  task,
+  onEditTask,
+  onDeleteTask,
+  isDeleting,
+}: {
+  task: KanbanTask
+  onEditTask: (task: KanbanTask) => void
+  onDeleteTask: (task: KanbanTask) => void
+  isDeleting?: boolean
+}) {
   const {
     attributes,
     listeners,
@@ -150,7 +173,12 @@ const SortableTaskCard = memo(function SortableTaskCard({ task }: { task: Kanban
           height for dnd-kit measurement) but hide it visually so only the
           DragOverlay card is visible — no duplicate ghost. */}
       <div className={isDragging ? "invisible" : undefined}>
-        <TaskCardInner task={task} />
+        <TaskCardInner
+          task={task}
+          onEditTask={onEditTask}
+          onDeleteTask={onDeleteTask}
+          isDeleting={isDeleting}
+        />
       </div>
     </div>
   )
@@ -160,9 +188,15 @@ const SortableTaskCard = memo(function SortableTaskCard({ task }: { task: Kanban
 const TaskCardInner = memo(function TaskCardInner({
   task,
   isOverlay = false,
+  onEditTask,
+  onDeleteTask,
+  isDeleting = false,
 }: {
   task: KanbanTask
   isOverlay?: boolean
+  onEditTask?: (task: KanbanTask) => void
+  onDeleteTask?: (task: KanbanTask) => void
+  isDeleting?: boolean
 }) {
   const config = priorityConfig[task.priority] ?? priorityConfig.medium
   const isHighPriority = task.priority === "high" || task.priority === "critical"
@@ -201,14 +235,54 @@ const TaskCardInner = memo(function TaskCardInner({
         <span className={cn("px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider", config.className)}>
           {config.label}
         </span>
-        {subtasksTotal > 0 && (
-          <div className="flex items-center gap-1 text-muted-foreground">
-            <span className="text-[10px] font-medium">
-              {subtasksDone} / {subtasksTotal}
-            </span>
-            <CheckSquare className="size-3" />
-          </div>
-        )}
+        <div className="flex items-center gap-1.5 text-muted-foreground">
+          {subtasksTotal > 0 && (
+            <div className="flex items-center gap-1 text-muted-foreground">
+              <span className="text-[10px] font-medium">
+                {subtasksDone} / {subtasksTotal}
+              </span>
+              <CheckSquare className="size-3" />
+            </div>
+          )}
+          {!isOverlay && onEditTask && onDeleteTask && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  className="size-7"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <MoreHorizontal className="size-3.5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" onCloseAutoFocus={(e) => e.preventDefault()}>
+                <DropdownMenuItem
+                  onSelect={(e) => {
+                    e.preventDefault()
+                    onEditTask(task)
+                  }}
+                >
+                  <Pencil className="size-3.5" />
+                  Edit Task
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  variant="destructive"
+                  disabled={isDeleting}
+                  onSelect={(e) => {
+                    e.preventDefault()
+                    onDeleteTask(task)
+                  }}
+                >
+                  {isDeleting ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
+                  {isDeleting ? "Deleting..." : "Delete Task"}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
       </div>
 
       {/* Task name */}
@@ -239,9 +313,15 @@ const TaskCardInner = memo(function TaskCardInner({
 function KanbanColumnView({
   column,
   isOver,
+  onEditTask,
+  onDeleteTask,
+  deletingTaskId,
 }: {
   column: BoardColumn
   isOver?: boolean
+  onEditTask: (task: KanbanTask) => void
+  onDeleteTask: (task: KanbanTask) => void
+  deletingTaskId: number | null
 }) {
   const { setNodeRef: setDroppableRef, isOver: isDroppableOver } = useDroppable({ id: column.id })
 
@@ -270,7 +350,13 @@ function KanbanColumnView({
       <SortableContext items={column.tasks.map((t) => String(t.id))} strategy={verticalListSortingStrategy}>
         <div className="flex-1 overflow-y-auto p-3 space-y-3">
           {column.tasks.map((task) => (
-            <SortableTaskCard key={task.id} task={task} />
+            <SortableTaskCard
+              key={task.id}
+              task={task}
+              onEditTask={onEditTask}
+              onDeleteTask={onDeleteTask}
+              isDeleting={deletingTaskId === task.id}
+            />
           ))}
         </div>
       </SortableContext>
@@ -282,12 +368,18 @@ function KanbanColumnView({
 
 /** Main Kanban board — renders sections and status columns from API data */
 export function KanbanBoard({ kanban, onBack }: KanbanBoardProps) {
+  const navigate = useNavigate()
   const [sections, setSections] = useState<BoardSection[]>(() =>
     buildBoardSections(kanban.sections),
   )
   const [activeTask, setActiveTask] = useState<KanbanTask | null>(null)
   const [activeTaskWidth, setActiveTaskWidth] = useState<number | null>(null)
   const [hoveredColumn, setHoveredColumn] = useState<string | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<Task | null>(null)
+  const [deletingTaskId, setDeletingTaskId] = useState<number | null>(null)
+
+  const { deleteTask: deleteTaskById, deleting } = useDeleteTask()
 
   const sensors = useSensors(
     // PointerSensor: 4px activation distance prevents accidental drags on click.
@@ -429,6 +521,50 @@ export function KanbanBoard({ kanban, onBack }: KanbanBoardProps) {
     })
   }, [])
 
+  const handleEditTask = useCallback(async (task: KanbanTask) => {
+    try {
+      const fullTask = await taskService.getById(task.id)
+      navigate(`/tasks/${fullTask.id}/edit`, {
+        state: {
+          editTask: fullTask,
+          returnTo: `/projects/${kanban.project.id}/kanban-board`,
+        },
+      })
+    } catch (err) {
+      if (!isCancel(err)) {
+        toast.error("Failed to load task details.")
+      }
+    }
+  }, [kanban.project.id, navigate])
+
+  const handleDeleteTaskClick = useCallback((task: KanbanTask) => {
+    setDeleteTarget(task as unknown as Task)
+    setDeleteDialogOpen(true)
+  }, [])
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!deleteTarget) return
+
+    setDeletingTaskId(deleteTarget.id)
+    const success = await deleteTaskById(deleteTarget.id)
+    if (success) {
+      setSections((prev) =>
+        prev.map((section) => ({
+          ...section,
+          columns: section.columns.map((column) => ({
+            ...column,
+            tasks: column.tasks.filter((task) => task.id !== deleteTarget.id),
+          })),
+        })),
+      )
+
+      setActiveTask((prev) => (prev?.id === deleteTarget.id ? null : prev))
+      setDeleteDialogOpen(false)
+      setDeleteTarget(null)
+    }
+    setDeletingTaskId(null)
+  }, [deleteTarget, deleteTaskById])
+
   // Collect all unique assigned users to show in the members bar
   const allMembers = (() => {
     const seen = new Map<number, { id: number; name: string; avatar_url?: string | null }>()
@@ -518,7 +654,14 @@ export function KanbanBoard({ kanban, onBack }: KanbanBoardProps) {
                   collapsing on smaller screens. */}
               <div className="flex gap-3 overflow-x-auto pb-3 pt-2 px-1 scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:none]">
                 {section.columns.map((col) => (
-                  <KanbanColumnView key={col.id} column={col} isOver={hoveredColumn === col.id} />
+                  <KanbanColumnView
+                    key={col.id}
+                    column={col}
+                    isOver={hoveredColumn === col.id}
+                    onEditTask={handleEditTask}
+                    onDeleteTask={handleDeleteTaskClick}
+                    deletingTaskId={deletingTaskId}
+                  />
                 ))}
               </div>
             </section>
@@ -563,6 +706,15 @@ export function KanbanBoard({ kanban, onBack }: KanbanBoardProps) {
           </DragOverlay>,
           document.body,
         )}
+
+        <ConfirmDeleteTaskDialog
+          task={deleteTarget}
+          open={deleteDialogOpen}
+          onOpenChange={(open) => {
+            if (!deleting) setDeleteDialogOpen(open)
+          }}
+          onConfirm={handleConfirmDelete}
+        />
       </DndContext>
     </div>
   )

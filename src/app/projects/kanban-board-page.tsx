@@ -4,6 +4,7 @@ import { AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useKanban } from "./hooks/useKanban"
+import { useProject } from "./hooks/useProject"
 import { KanbanBoard } from "./pages/kanban-board"
 
 function KanbanSkeleton() {
@@ -83,6 +84,9 @@ export default function KanbanBoardPage() {
 
   // Fetch kanban data from GET /projects/:id/kanban
   const { data, loading, error } = useKanban(projectId)
+
+  // Load project into store so the breadcrumb can display the project name
+  useProject(projectId)
 
   // Loading state
   if (loading) {

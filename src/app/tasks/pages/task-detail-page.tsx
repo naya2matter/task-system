@@ -747,9 +747,8 @@ export default function TaskDetailPage() {
                       variant="outline"
                       size="sm"
                       onClick={() =>
-                        navigate("/tasks", {
+                        navigate(`/tasks/${task.id}/edit`, {
                           state: {
-                            openForm: "edit",
                             editTask: task,
                             returnTo: `/tasks/${task.id}`,
                           },
@@ -764,9 +763,7 @@ export default function TaskDetailPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() =>
-                        navigate("/tasks", { state: { openForm: "create", defaultProjectId: task.section?.project?.id } })
-                      }
+                      onClick={() => navigate(`/tasks/${task.id}/rate`)}
                     >
                       <Star className="size-3.5" />
                       Rate

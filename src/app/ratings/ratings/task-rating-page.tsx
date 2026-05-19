@@ -5,7 +5,7 @@ import { AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 // Task type from the API-aligned types module
 import type { Task } from "@/app/tasks/types"
-// Service for the GET /tasks/{id} call
+// Service for loading task details (including user assignments)
 import { taskService } from "@/app/tasks/services/taskService"
 // The actual rating form component
 import { TaskRatingForm } from "@/app/tasks/pages/task-rating-form"
@@ -18,7 +18,7 @@ import { TaskRatingFormSkeleton } from "./task-rating-skeleton"
  *
  * Responsibilities:
  * 1. Read the taskId from the URL params
- * 2. Fetch the task details from GET /tasks/{taskId}
+ * 2. Fetch task details from GET /tasks/{taskId}/with-assignments
  * 3. Render loading / error states while fetching
  * 4. Pass the loaded task into <TaskRatingForm> once ready
  * 5. Navigate back to /ratings after a successful submission
@@ -45,7 +45,7 @@ export default function TaskRatingPage() {
     setLoading(true)
     setError(null)
 
-    taskService.getById(id)
+    taskService.getByIdWithAssignments(id)
       .then((t) => {
         if (!cancelled) setTask(t)
       })

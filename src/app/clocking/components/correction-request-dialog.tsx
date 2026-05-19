@@ -4,6 +4,7 @@
 // calls POST /clocking/correction-request, and returns the created correction.
 
 import { useState } from "react"
+import { format, parseISO } from "date-fns"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -14,7 +15,40 @@ import { cn } from "@/lib/utils"
 import { isCancel } from "axios"
 import { toast } from "sonner"
 import { DateInput } from "@/components/ui/date-input"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import type { ClockRecordApiItem, ApiCorrectionType, PendingCorrectionApiItem } from "../data"
+
+// ─── Time picker helpers ──────────────────────────────────────────
+
+const HOURS   = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0"))
+const MINUTES = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, "0"))
+
+/** Parse a 24-h "HH:MM" string into { hour12, minute, period } display parts */
+function parseTo12h(value: string) {
+  if (!value) return { hour12: "", minute: "", period: "AM" as "AM" | "PM" }
+  const [hStr, mStr] = value.split(":")
+  const h = parseInt(hStr, 10)
+  return {
+    hour12: String(h === 0 ? 12 : h > 12 ? h - 12 : h).padStart(2, "0"),
+    minute: mStr ?? "00",
+    period: (h < 12 ? "AM" : "PM") as "AM" | "PM",
+  }
+}
+
+/** Combine 12-h parts back to "HH:MM" 24-hour string */
+function to24h(hour12: string, minute: string, period: "AM" | "PM"): string {
+  if (!hour12 || !minute) return ""
+  let h = parseInt(hour12, 10)
+  if (period === "AM") { if (h === 12) h = 0 }
+  else                 { if (h !== 12) h += 12 }
+  return `${String(h).padStart(2, "0")}:${minute}`
+}
 import { clockingService } from "@/services/clockingService"
 
 // ─── Correction type options ──────────────────────────────────────
@@ -57,8 +91,15 @@ export function CorrectionRequestDialog({
   const [breakRecordId, setBreakRecordId] = useState<number | "">("")
   // Proposed corrected date + time (user enters in their local timezone)
   const [proposedDate, setProposedDate] = useState("")
-  const [proposedTime, setProposedTime] = useState("")
+  const [proposedTime, setProposedTime] = useState("")      // stored as HH:MM 24-h
   const [reason, setReason] = useState("")
+
+  // Derived 12-h display parts for the time picker
+  const { hour12, minute, period } = parseTo12h(proposedTime)
+
+  function setTimePart(h: string, m: string, p: "AM" | "PM") {
+    setProposedTime(to24h(h, m, p))
+  }
   const [submitting, setSubmitting] = useState(false)
 
   if (!record) return null
@@ -135,7 +176,7 @@ export function CorrectionRequestDialog({
               <p className="text-sm text-muted-foreground">
                 Session date:{" "}
                 <span className="font-mono text-foreground">
-                  {record.session_date}
+                  {format(parseISO(record.session_date), "MMM d, yyyy")}
                 </span>
               </p>
               <p className="text-xs italic text-primary">
@@ -222,15 +263,67 @@ export function CorrectionRequestDialog({
                 />
               </InputField>
 
-              <InputField label="Proposed Time (UTC)">
-                <input
-                  required
-                  type="time"
-                  value={proposedTime}
-                  onChange={(e) => setProposedTime(e.target.value)}
-                  className="w-full border-none bg-transparent px-4 py-3.5 text-sm text-foreground outline-none"
-                />
-              </InputField>
+              <div>
+                <label className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                  Proposed Time (UTC)
+                </label>
+                {/* Unified pill — same visual weight as InputField but borderless between segments */}
+                <div className="group flex items-center overflow-hidden rounded-t-xl bg-muted/40 ring-1 ring-border/30 transition-all focus-within:ring-primary">
+                  {/* Hour */}
+                  <Select
+                    value={hour12}
+                    onValueChange={(v) => setTimePart(v, minute || "00", period)}
+                  >
+                    <SelectTrigger className="flex-1 h-12 rounded-none border-none bg-transparent px-4 text-sm font-semibold shadow-none focus:ring-0 focus-visible:ring-0">
+                      <SelectValue placeholder="HH" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-52">
+                      {HOURS.map((h) => (
+                        <SelectItem key={h} value={h}>{h}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <span className="shrink-0 text-muted-foreground/60 font-bold text-lg leading-none select-none">:</span>
+
+                  {/* Minute */}
+                  <Select
+                    value={minute}
+                    onValueChange={(v) => setTimePart(hour12 || "12", v, period)}
+                  >
+                    <SelectTrigger className="flex-1 h-12 rounded-none border-none bg-transparent px-4 text-sm font-semibold shadow-none focus:ring-0 focus-visible:ring-0">
+                      <SelectValue placeholder="MM" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-52">
+                      {MINUTES.map((m) => (
+                        <SelectItem key={m} value={m}>{m}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {/* Divider */}
+                  <div className="h-5 w-px bg-border/40 shrink-0" />
+
+                  {/* AM / PM */}
+                  <Select
+                    value={period}
+                    onValueChange={(v) => setTimePart(hour12 || "12", minute || "00", v as "AM" | "PM")}
+                  >
+                    <SelectTrigger className="w-24 h-12 rounded-none border-none bg-transparent px-4 text-sm font-semibold shadow-none focus:ring-0 focus-visible:ring-0">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="AM">AM</SelectItem>
+                      <SelectItem value="PM">PM</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  {/* Bottom accent line — mirrors InputField */}
+                  <div className="pointer-events-none absolute bottom-0 left-0 h-0.5 w-full" />
+                </div>
+                {/* bottom underline accent (replicates InputField) */}
+                <div className="h-0.5 bg-border/40 group-focus-within:bg-primary transition-colors" />
+              </div>
             </div>
 
             {/* Reason */}
@@ -260,6 +353,12 @@ export function CorrectionRequestDialog({
                   className="w-full resize-none border-none bg-transparent px-4 py-3.5 text-sm text-foreground placeholder:text-muted-foreground/50 outline-none"
                 />
               </InputField>
+              {/* Minimum length hint */}
+              {reason.length > 0 && reason.trim().length < 10 && (
+                <p className="mt-1.5 text-[10px] font-semibold text-destructive uppercase tracking-widest">
+                  {10 - reason.trim().length} more character{10 - reason.trim().length !== 1 ? "s" : ""} required
+                </p>
+              )}
             </div>
 
             {/* Actions */}

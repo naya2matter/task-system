@@ -57,12 +57,12 @@ export function ManagerExportDialog({ open, onOpenChange }: ManagerExportDialogP
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[425px] overflow-hidden p-0 border-0 shadow-2xl">
+      <DialogContent className="max-w-130 overflow-hidden p-0 border-0 shadow-2xl">
         <div className="px-6 pt-6 pb-4 bg-muted/30 border-b border-border/50">
-          <DialogHeader className="gap-1">
-            <div className="mb-1 inline-flex w-fit items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-0.5">
-              <FileArchive className="size-3 text-primary" />
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-primary">
+          <DialogHeader className="gap-2">
+            <div className="mb-1 inline-flex w-fit items-center gap-1.5 rounded-full border border-red-500/20 bg-red-500/10 px-3 py-1">
+              <FileArchive className="size-3 text-red-400" />
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-red-400">
                 Export All Records
               </span>
             </div>
@@ -83,12 +83,14 @@ export function ManagerExportDialog({ open, onOpenChange }: ManagerExportDialogP
               <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 From Date
               </label>
-              <DateInput
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                placeholder="YYYY-MM-DD"
-                className="w-full"
-              />
+              <div className="rounded-2xl border border-border/20 bg-muted/40 transition-colors focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20">
+                <DateInput
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  placeholder="Pick a date"
+                  className="w-full border-none bg-transparent px-4 py-3 text-sm text-foreground outline-none"
+                />
+              </div>
             </div>
 
             {/* End date */}
@@ -96,12 +98,14 @@ export function ManagerExportDialog({ open, onOpenChange }: ManagerExportDialogP
               <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 To Date
               </label>
-              <DateInput
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                placeholder="YYYY-MM-DD"
-                className="w-full"
-              />
+              <div className="rounded-2xl border border-border/20 bg-muted/40 transition-colors focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20">
+                <DateInput
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  placeholder="Pick a date"
+                  className="w-full border-none bg-transparent px-4 py-3 text-sm text-foreground outline-none"
+                />
+              </div>
             </div>
           </div>
 

@@ -79,9 +79,8 @@ export function SectionCard({ section, onEdit, onDelete, submitting, canEdit = f
    * Uses React Router location.state — no query params, no sheet.
    */
   function handleAddTask() {
-    navigate("/tasks", {
+    navigate(`/tasks/create`, {
       state: {
-        openForm: "create",
         defaultSectionId: section.id,
         defaultProjectId: section.project_id,
         returnTo,
@@ -99,9 +98,8 @@ export function SectionCard({ section, onEdit, onDelete, submitting, canEdit = f
     setEditLoadingId(taskId)
     try {
       const fullTask = await taskService.getById(taskId)
-      navigate("/tasks", {
+      navigate(`/tasks/${taskId}/edit`, {
         state: {
-          openForm: "edit",
           editTask: fullTask,
           returnTo,
         },

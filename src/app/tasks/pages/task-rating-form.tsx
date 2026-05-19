@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { ArrowLeft, Loader2, AlertCircle, Star, CheckCircle2, Users } from "lucide-react"
+import { ArrowLeft, Loader2, AlertCircle, Star, CheckCircle2, Users, Settings2 } from "lucide-react"
 // API Task type (snake_case fields matching the backend response)
 import type { Task, TaskRatingRecord } from "@/app/tasks/types"
 // Rating config type from the configurations module
@@ -17,6 +17,13 @@ import { taskService } from "@/app/tasks/services/taskService"
 import { ratingConfigService } from "@/app/ratings/configurations/services/ratingConfigService"
 // Auth store to identify the current user for edit-mode detection
 import { useAuthStore } from "@/app/(auth)/stores/authStore"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -58,7 +65,8 @@ type TaskRatingFormProps = {
 
 export function TaskRatingForm({ task, onSubmit, onCancel }: TaskRatingFormProps) {
   const currentUser = useAuthStore((s) => s.user)
-  const assignedUsers = task.assigned_users ?? []
+  const [assignedUsers, setAssignedUsers] = useState(task.assigned_users ?? [])
+  const [assignedUsersLoading, setAssignedUsersLoading] = useState(false)
 
   // ── Rating config state ──────────────────────────────────────────
   // Loaded from GET /rating-configs/type/task_rating/active
@@ -84,6 +92,28 @@ export function TaskRatingForm({ task, onSubmit, onCancel }: TaskRatingFormProps
   // ── Submit state ─────────────────────────────────────────────────
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+
+  // ── Effect 0: Load task assignments (some task payloads omit relations) ───
+  useEffect(() => {
+    let cancelled = false
+    setAssignedUsers(task.assigned_users ?? [])
+    setAssignedUsersLoading(true)
+
+    taskService.getByIdWithAssignments(task.id)
+      .then((loadedTask) => {
+        if (!cancelled) {
+          setAssignedUsers(loadedTask.assigned_users ?? [])
+        }
+      })
+      .catch(() => {
+        // Keep the users from the incoming task payload when this fetch fails.
+      })
+      .finally(() => {
+        if (!cancelled) setAssignedUsersLoading(false)
+      })
+
+    return () => { cancelled = true }
+  }, [task.id, task.assigned_users])
 
   // ── Effect 1: Load active task_rating configs ────────────────────
   useEffect(() => {
@@ -291,22 +321,43 @@ export function TaskRatingForm({ task, onSubmit, onCancel }: TaskRatingFormProps
           {/* ── Left: Rating Form ──────────────────────────────── */}
           <div className="lg:col-span-8 space-y-6">
 
-            {/* Config selector tabs — one tab per active rating config */}
-            <div className="flex flex-wrap gap-1 p-1 bg-muted/50 rounded-xl w-fit overflow-x-auto max-w-full">
-              {configs.map((config) => (
-                <button
-                  key={config.id}
-                  type="button"
-                  className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider whitespace-nowrap transition-colors ${
-                    activeConfigId === config.id
-                      ? "bg-background text-primary shadow-sm"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                  onClick={() => setActiveConfigId(config.id)}
-                >
-                  {config.name}
-                </button>
-              ))}
+            {/* Config selector — compact row that scales to any number of configs */}
+            <div className="rounded-2xl border border-border/20 bg-muted/30 px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-primary/20 bg-primary/10">
+                  <Settings2 className="size-4 text-primary" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground leading-none mb-0.5">
+                    Rating Configuration
+                  </p>
+                  {currentConfig?.description ? (
+                    <p className="text-xs text-muted-foreground truncate max-w-xs">
+                      {currentConfig.description}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      {configs.length} config{configs.length !== 1 ? "s" : ""} available
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <Select
+                value={activeConfigId !== null ? String(activeConfigId) : ""}
+                onValueChange={(v) => setActiveConfigId(Number(v))}
+              >
+                <SelectTrigger className="w-full sm:w-56 h-9 rounded-xl border-border/30 bg-background/60 text-sm font-semibold shrink-0">
+                  <SelectValue placeholder="Select a config…" />
+                </SelectTrigger>
+                <SelectContent>
+                  {configs.map((config) => (
+                    <SelectItem key={config.id} value={String(config.id)}>
+                      {config.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <Card>
@@ -406,7 +457,13 @@ export function TaskRatingForm({ task, onSubmit, onCancel }: TaskRatingFormProps
               Assigned Users
             </h4>
 
-            {assignedUsers.length === 0 ? (
+            {assignedUsersLoading && (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="size-4 animate-spin text-muted-foreground" />
+              </div>
+            )}
+
+            {!assignedUsersLoading && assignedUsers.length === 0 ? (
               <Card>
                 <CardContent className="p-6 text-center">
                   <p className="text-sm text-muted-foreground">No users assigned to this task</p>

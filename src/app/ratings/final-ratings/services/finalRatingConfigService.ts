@@ -35,8 +35,16 @@ class FinalRatingConfigService {
    * Returns 404 if no active config exists.
    */
   async getActive(): Promise<ApiFinalRatingConfig> {
-    const response = await apiClient.get<ApiFinalRatingConfig>("/final-ratings/configs/active")
-    return response.data
+    // Some backend builds do not expose /configs/active reliably.
+    // Read all configs and derive the active one client-side.
+    const configs = await this.getAll()
+    const active = configs.find((config) => config.is_active)
+
+    if (!active) {
+      throw new Error("No active configuration found")
+    }
+
+    return active
   }
 
   /**

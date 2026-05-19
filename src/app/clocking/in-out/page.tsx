@@ -360,7 +360,7 @@ export default function ClockingInOutPage() {
         {/* ── Digital Clock ──────────────────────────────────────── */}
         <div className="mb-12">
           <h2 className="flex items-baseline gap-1 text-6xl font-thin tracking-tighter text-foreground sm:text-7xl lg:text-8xl">
-            {time.hours}:{time.minutes}
+            {time.hours}:{time.minutes}:
             <span className="text-primary font-light">{time.seconds}</span>
             <span className="ml-3 text-xl font-bold uppercase tracking-widest text-muted-foreground sm:text-2xl">
               {time.period}

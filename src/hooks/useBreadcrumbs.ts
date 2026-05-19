@@ -3,7 +3,9 @@ import { useLocation } from "react-router"
 import { useProjectsStore } from "@/app/projects/store/projectStore"
 import { useTasksStore } from "@/app/tasks/store/taskStore"
 import { useHelpRequestsStore } from "@/app/help-requests/store/helpRequestStore"
-import { configurations } from "@/app/ratings/configurations/data"
+import { useWorkspaceStore } from "@/app/workspaces/store/workspaceStore"
+import { useTicketsStore } from "@/app/tickets/store/ticketStore"
+import { useRatingConfigStore } from "@/app/ratings/configurations/store/ratingConfigStore"
 
 export interface BreadcrumbItem {
   label: string
@@ -21,6 +23,10 @@ export function useBreadcrumbs(): BreadcrumbItem[] {
   const selectedProject = useProjectsStore((s) => s.selectedProject)
   const selectedTask = useTasksStore((s) => s.selectedTask)
   const selectedRequest = useHelpRequestsStore((s) => s.selectedRequest)
+  const selectedWorkspace = useWorkspaceStore((s) => s.selectedWorkspace)
+  const selectedTodo = useWorkspaceStore((s) => s.selectedTodo)
+  const selectedTicket = useTicketsStore((s) => s.selectedTicket)
+  const selectedRatingConfig = useRatingConfigStore((s) => s.selectedConfig)
 
   return useMemo(() => {
     const segments = pathname.split("/").filter(Boolean)
@@ -34,6 +40,8 @@ export function useBreadcrumbs(): BreadcrumbItem[] {
       users: "User",
       roles: "Role",
       tickets: "Ticket",
+      workspaces: "Workspace",
+      todos: "Todo",
     }
 
     const items: BreadcrumbItem[] = []
@@ -68,13 +76,16 @@ export function useBreadcrumbs(): BreadcrumbItem[] {
             items.push({ label: "Ratings", href: isLast ? undefined : "/ratings" })
             break
           case "clocking":
-            items.push({ label: "Clocking", href: isLast ? undefined : "/clocking" })
+            items.push({ label: "Clocking", href: isLast ? undefined : "/clocking/in-out" })
             break
           case "roles":
             items.push({ label: "Roles", href: isLast ? undefined : "/roles" })
             break
           case "tickets":
             items.push({ label: "Tickets", href: isLast ? undefined : "/tickets" })
+            break
+          case "workspaces":
+            items.push({ label: "Workspaces", href: isLast ? undefined : "/workspaces" })
             break
           default:
             // Generic top-level label
@@ -135,11 +146,57 @@ export function useBreadcrumbs(): BreadcrumbItem[] {
         continue
       }
 
+      // Workspaces/:id
+      if (prev === "workspaces") {
+        const wsId = seg
+        const name =
+          selectedWorkspace && selectedWorkspace.id?.toString() === wsId
+            ? selectedWorkspace.name
+            : `Workspace #${wsId}`
+        const href = `/workspaces/${wsId}`
+        items.push({ label: name, href: isLast ? undefined : href })
+        continue
+      }
+
+      // Tickets/:id — detail breadcrumb should be clickable when editing
+      if (prev === "tickets") {
+        const ticketId = seg
+        const title =
+          selectedTicket && selectedTicket.id?.toString() === ticketId
+            ? selectedTicket.title
+            : `Ticket #${ticketId}`
+        const href = segments[i + 1] === "edit" ? `/tickets/${ticketId}` : undefined
+        items.push({ label: title, href: isLast ? undefined : href })
+        continue
+      }
+
+      // todos segment — the todo list lives on the workspace detail page,
+      // not at /workspaces/:id/todos, so link back to workspace detail
+      if (seg === "todos") {
+        const workspaceId = segments[1]
+        const href = `/workspaces/${workspaceId}`
+        items.push({ label: "Todos", href: isLast ? undefined : href })
+        continue
+      }
+
+      // Todos/:todoId
+      if (prev === "todos") {
+        const todoId = seg
+        const title =
+          selectedTodo && selectedTodo.id?.toString() === todoId
+            ? selectedTodo.title
+            : `Todo #${todoId}`
+        items.push({ label: title })
+        continue
+      }
+
       // Ratings -> configurations -> :id
       if (prev === "configurations" && segments[i - 2] === "ratings") {
         const cfgId = seg
-        const cfg = configurations.find((c) => c.id === cfgId)
-        const name = cfg?.name ?? `Configuration ${cfgId}`
+        const name =
+          selectedRatingConfig && selectedRatingConfig.id?.toString() === cfgId
+            ? selectedRatingConfig.name
+            : `Configuration ${cfgId}`
         const href = `/ratings/configurations/${cfgId}`
         items.push({ label: name, href: isLast ? undefined : href })
         continue
@@ -158,5 +215,14 @@ export function useBreadcrumbs(): BreadcrumbItem[] {
     }
 
     return items.length ? items : [{ label: "Dashboard" }]
-  }, [pathname, selectedProject, selectedTask, selectedRequest])
+  }, [
+    pathname,
+    selectedProject,
+    selectedTask,
+    selectedRequest,
+    selectedWorkspace,
+    selectedTodo,
+    selectedTicket,
+    selectedRatingConfig,
+  ])
 }

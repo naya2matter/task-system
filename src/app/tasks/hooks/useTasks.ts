@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useCallback } from "react"
 import { useTasksStore } from "../store/taskStore"
 import type { TaskListParams } from "../types"
 
@@ -22,6 +22,9 @@ export function useTasks(params: TaskListParams = {}) {
   const paramsKey = JSON.stringify(params)
   const lastKey = useRef<string>("")
 
+  const refetch = useCallback(() => fetchTasks(params), [fetchTasks, params])
+  const clearAppError = useCallback(() => clearError(), [clearError])
+
   useEffect(() => {
     if (paramsKey !== lastKey.current) {
       lastKey.current = paramsKey
@@ -36,7 +39,7 @@ export function useTasks(params: TaskListParams = {}) {
     loading,
     error,
     /** Re-fetch with the same params (e.g. after a mutation) */
-    refetch: () => fetchTasks(params),
-    clearError,
+    refetch,
+    clearError: clearAppError,
   }
 }

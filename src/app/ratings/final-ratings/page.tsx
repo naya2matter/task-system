@@ -469,7 +469,6 @@ export default function FinalRatingsPage() {
               </Label>
               <DateInput
                 id="period_start"
-                type="date"
                 value={periodStart}
                 onChange={(e) => setPeriodStart(e.target.value)}
                 required
@@ -483,7 +482,6 @@ export default function FinalRatingsPage() {
               </Label>
               <DateInput
                 id="period_end"
-                type="date"
                 value={periodEnd}
                 min={periodStart}
                 onChange={(e) => setPeriodEnd(e.target.value)}

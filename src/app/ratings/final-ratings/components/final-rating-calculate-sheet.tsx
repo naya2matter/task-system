@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
+import { DateInput } from "@/components/ui/date-input"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
@@ -149,9 +150,8 @@ export function FinalRatingCalculateSheet({
             <Label htmlFor="period_start">
               Period Start <span className="text-destructive">*</span>
             </Label>
-            <Input
+            <DateInput
               id="period_start"
-              type="date"
               value={periodStart}
               onChange={(e) => setPeriodStart(e.target.value)}
               required
@@ -163,9 +163,8 @@ export function FinalRatingCalculateSheet({
             <Label htmlFor="period_end">
               Period End <span className="text-destructive">*</span>
             </Label>
-            <Input
+            <DateInput
               id="period_end"
-              type="date"
               value={periodEnd}
               min={periodStart}
               onChange={(e) => setPeriodEnd(e.target.value)}

@@ -347,30 +347,6 @@
   }
 }
 
-/* Hide native date picker indicator to avoid duplicate icon (WebKit/Blink)
-   Our custom `DateInput` adds its own calendar button; hiding the native
-   indicator prevents the small black native icon from showing. */
-input[type="date"]::-webkit-calendar-picker-indicator {
-  display: none;
-  -webkit-appearance: none;
-  appearance: none;
-  pointer-events: none;
-}
-
-/* Additional WebKit cleanup */
-input[type="date"]::-webkit-clear-button,
-input[type="date"]::-webkit-inner-spin-button {
-  display: none;
-  -webkit-appearance: none;
-  appearance: none;
-}
-
-/* Make date inputs look like textfields in Firefox to avoid extra chrome */
-input[type="date"] {
-  -moz-appearance: textfield;
-  appearance: textfield;
-}
-
 /* Primary modern CTA gradient (used by buttons) */
 .btn-gradient-modern {
   background-image: linear-gradient(90deg, var(--chart-1), var(--chart-4) 55%, var(--chart-5));
