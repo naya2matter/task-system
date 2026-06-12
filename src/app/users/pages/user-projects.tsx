@@ -1,5 +1,5 @@
 import { useEffect } from "react"
-import { AlertCircle, FolderOpen, ChevronLeft, ChevronRight } from "lucide-react"
+import { AlertCircle, ChevronLeft, ChevronRight } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -117,15 +117,8 @@ export function UserProjects({ userId }: UserProjectsProps) {
     )
   }
 
-  // ── Empty state ──────────────────────────────────────────────────────────
-  if (userProjects && userProjects.length === 0) {
-    return (
-      <div className="flex flex-col items-center gap-2 py-6 text-center text-muted-foreground">
-        <FolderOpen className="size-8 opacity-40" />
-        <p className="text-sm">No projects found for this user.</p>
-      </div>
-    )
-  }
+  // ── Empty state — hide section entirely (same pattern as task assignments) ─
+  if (userProjects && userProjects.length === 0) return null
 
   if (!userProjects) return null
 

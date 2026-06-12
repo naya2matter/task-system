@@ -18,7 +18,7 @@ export interface BreadcrumbItem {
  * The last item in the array is always the current page (no href).
  */
 export function useBreadcrumbs(): BreadcrumbItem[] {
-  const { pathname } = useLocation()
+  const { pathname, state: routeState } = useLocation()
 
   const selectedProject = useProjectsStore((s) => s.selectedProject)
   const selectedTask = useTasksStore((s) => s.selectedTask)
@@ -161,10 +161,13 @@ export function useBreadcrumbs(): BreadcrumbItem[] {
       // Tickets/:id — detail breadcrumb should be clickable when editing
       if (prev === "tickets") {
         const ticketId = seg
+        const stateTicket = (routeState as { editTicket?: { id: number; title: string } } | null)?.editTicket
         const title =
           selectedTicket && selectedTicket.id?.toString() === ticketId
             ? selectedTicket.title
-            : `Ticket #${ticketId}`
+            : stateTicket && stateTicket.id?.toString() === ticketId
+              ? stateTicket.title
+              : `Ticket #${ticketId}`
         const href = segments[i + 1] === "edit" ? `/tickets/${ticketId}` : undefined
         items.push({ label: title, href: isLast ? undefined : href })
         continue
@@ -217,6 +220,7 @@ export function useBreadcrumbs(): BreadcrumbItem[] {
     return items.length ? items : [{ label: "Dashboard" }]
   }, [
     pathname,
+    routeState,
     selectedProject,
     selectedTask,
     selectedRequest,

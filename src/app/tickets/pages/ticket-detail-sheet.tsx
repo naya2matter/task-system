@@ -385,8 +385,10 @@ export function TicketDetailSheet({
                       variant="outline"
                       size="sm"
                       onClick={() => {
+                        // onEdit navigates to /tickets/{id}/edit; the route change
+                        // closes the sheet via the page effect. Calling onOpenChange
+                        // here would fire navigate("/tickets") and override the edit nav.
                         onEdit(ticket)
-                        onOpenChange(false)
                       }}
                     >
                       <Pencil className="size-3.5 mr-2" />

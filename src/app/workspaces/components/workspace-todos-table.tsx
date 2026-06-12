@@ -9,7 +9,6 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -63,7 +62,6 @@ export function WorkspaceTodosTable({ todos, workspaceId, onDelete }: Props) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-10"></TableHead>
             <TableHead>Title</TableHead>
             <TableHead>Due Date</TableHead>
             <TableHead className="text-center">Status</TableHead>
@@ -80,9 +78,6 @@ export function WorkspaceTodosTable({ todos, workspaceId, onDelete }: Props) {
                 className={`group cursor-pointer ${todo.status === "completed" ? "opacity-60" : ""}`}
                 onClick={() => navigate(`/workspaces/${workspaceId}/todos/${todo.id}`)}
               >
-                <TableCell onClick={(e) => e.stopPropagation()}>
-                  <Checkbox checked={todo.status === "completed"} />
-                </TableCell>
                 <TableCell>
                   <span className={`font-semibold ${todo.status === "completed" ? "line-through" : ""}`}>
                     {todo.title}
@@ -143,11 +138,6 @@ export function WorkspaceTodosTable({ todos, workspaceId, onDelete }: Props) {
                   className="cursor-pointer bg-muted/30 hover:bg-muted/50"
                   onClick={() => navigate(`/workspaces/${workspaceId}/todos/${sub.id}`)}
                 >
-                  <TableCell onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center justify-end pr-1 border-r-2 border-muted-foreground/20 h-full">
-                      <Checkbox checked={sub.status === "completed"} className="size-3.5" />
-                    </div>
-                  </TableCell>
                   <TableCell>
                     <div className="flex flex-col gap-0.5 pl-6">
                       <span className={`text-sm font-medium text-muted-foreground ${sub.status === "completed" ? "line-through" : ""}`}>
@@ -207,11 +197,6 @@ export function WorkspaceTodosTable({ todos, workspaceId, onDelete }: Props) {
                     className="cursor-pointer bg-muted/50 hover:bg-muted/70"
                     onClick={() => navigate(`/workspaces/${workspaceId}/todos/${subsub.id}`)}
                   >
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center justify-end pr-1 border-r-2 border-muted-foreground/10 h-full">
-                        <Checkbox checked={subsub.status === "completed"} className="size-3" />
-                      </div>
-                    </TableCell>
                     <TableCell>
                       <div className="flex flex-col gap-0.5 pl-12">
                         <span className={`text-xs font-medium text-muted-foreground/80 ${subsub.status === "completed" ? "line-through" : ""}`}>
