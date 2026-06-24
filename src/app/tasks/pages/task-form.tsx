@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/select"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { AlertCircle, ArrowLeft, Loader2, Plus, X } from "lucide-react"
+import { SearchableSelect } from "@/components/ui/searchable-select"
 import { HtmlEditor } from "@/components/ui/html-editor"
 import { normalizeHtmlForSubmit } from "@/lib/html"
 
@@ -414,56 +415,31 @@ export function TaskForm({ mode, initialData, defaultProjectId, defaultSectionId
                 {/* Project — picking a project populates the Section dropdown */}
                 <div className="space-y-2">
                   <Label>Project *</Label>
-                  <Select
+                  <SearchableSelect
                     value={selectedProjectId?.toString() ?? ""}
                     onValueChange={(v) => {
                       setSelectedProjectId(Number(v))
-                      setSectionId(null) // clear section when project changes
+                      setSectionId(null)
                     }}
-                    disabled={projectsLoading}
-                  >
-                    <SelectTrigger className="w-full h-12">
-                      <SelectValue
-                        placeholder={projectsLoading ? "Loading projects…" : "Select Project"}
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {projects.map((p) => (
-                        <SelectItem key={p.id} value={p.id.toString()}>
-                          {p.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    options={projects.map((p) => ({ value: p.id.toString(), label: p.name }))}
+                    placeholder="Select Project"
+                    loading={projectsLoading}
+                  />
                 </div>
 
                 {/* Section — populated after a project is selected */}
                 <div className="space-y-2">
                   <Label>Section *</Label>
-                  <Select
+                  <SearchableSelect
                     value={sectionId?.toString() ?? ""}
                     onValueChange={(v) => setSectionId(Number(v))}
-                    disabled={!selectedProjectId || sectionsLoading}
-                  >
-                    <SelectTrigger className="w-full h-12">
-                      <SelectValue
-                        placeholder={
-                          !selectedProjectId
-                            ? "Select a project first"
-                            : sectionsLoading
-                            ? "Loading sections…"
-                            : "Select Section"
-                        }
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {sections.map((s) => (
-                        <SelectItem key={s.id} value={s.id.toString()}>
-                          {s.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    options={sections.map((s) => ({ value: s.id.toString(), label: s.name }))}
+                    placeholder={
+                      !selectedProjectId ? "Select a project first" : "Select Section"
+                    }
+                    loading={sectionsLoading}
+                    disabled={!selectedProjectId}
+                  />
                   {fieldErrors.section_id && (
                     <p className="text-sm text-destructive">{fieldErrors.section_id}</p>
                   )}
@@ -544,14 +520,22 @@ export function TaskForm({ mode, initialData, defaultProjectId, defaultSectionId
 
                 {/* Description — optional, full width */}
                 <div className="md:col-span-2 space-y-2">
-                  <Label htmlFor="description">Description</Label>
-                  <HtmlEditor
-                    id="description"
-                    value={description}
-                    onChange={setDescription}
-                    placeholder="Briefly describe the task objectives..."
-                    minHeightClassName="min-h-36"
-                  />
+                  <div className="flex items-baseline gap-2">
+                    <Label htmlFor="description">Description</Label>
+                    <span className="text-xs text-muted-foreground">(optional)</span>
+                  </div>
+                  <div className="overflow-hidden rounded-xl border border-border/40 bg-muted/20 ring-1 ring-border/20 transition-all focus-within:ring-primary">
+                    <HtmlEditor
+                      id="description"
+                      value={description}
+                      onChange={setDescription}
+                      placeholder="Briefly describe the task objectives..."
+                      minHeightClassName="min-h-36"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Supports rich text formatting — bold, lists, links, and more.
+                  </p>
                 </div>
 
                 {/* User Assignments —
@@ -600,24 +584,14 @@ export function TaskForm({ mode, initialData, defaultProjectId, defaultSectionId
                               className="flex flex-col sm:flex-row gap-2 items-start sm:items-center"
                             >
                               {/* User picker */}
-                              <Select
+                              <SearchableSelect
                                 value={row.userId}
                                 onValueChange={(v) => updateAssignmentRow(row.key, "userId", v)}
-                                disabled={usersLoading}
-                              >
-                                <SelectTrigger className="flex-1 h-10 text-sm">
-                                  <SelectValue
-                                    placeholder={usersLoading ? "Loading users…" : "Select user"}
-                                  />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {allUsers.map((u) => (
-                                    <SelectItem key={u.id} value={u.id.toString()}>
-                                      {u.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                                options={allUsers.map((u) => ({ value: u.id.toString(), label: u.name }))}
+                                placeholder="Select user"
+                                loading={usersLoading}
+                                className="flex-1"
+                              />
 
                               <div className="flex gap-2 w-full sm:w-auto">
                                 {/* Percentage — live total updates as user types */}

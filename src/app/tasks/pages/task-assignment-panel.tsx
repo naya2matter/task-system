@@ -39,13 +39,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
   Table,
   TableBody,
   TableCell,
@@ -53,6 +46,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { SearchableSelect } from "@/components/ui/searchable-select"
 import { taskService } from "@/app/tasks/services/taskService"
 import { useAllUsers } from "@/app/tasks/hooks/useAllUsers"
 import type { AssignedUser } from "@/app/tasks/types"
@@ -707,30 +701,16 @@ export function TaskAssignmentPanel({ taskId, mode }: Props) {
                 {addError && <ErrorBanner message={addError} />}
 
                 <div className="flex flex-col sm:flex-row gap-2">
-                  <Select
+                  <SearchableSelect
                     value={addUserId}
                     onValueChange={(v) => { setAddUserId(v); setAddError(null) }}
-                    disabled={usersLoading || addSubmitting}
-                  >
-                    <SelectTrigger className="flex-1 h-10 text-sm">
-                      <SelectValue
-                        placeholder={usersLoading ? "Loading users…" : "Select a user"}
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableUsers.length === 0 ? (
-                        <div className="p-3 text-sm text-muted-foreground text-center">
-                          All users already assigned
-                        </div>
-                      ) : (
-                        availableUsers.map((u) => (
-                          <SelectItem key={u.id} value={u.id.toString()}>
-                            {u.name}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
+                    options={availableUsers.map((u) => ({ value: u.id.toString(), label: u.name }))}
+                    placeholder="Select a user"
+                    loading={usersLoading}
+                    disabled={addSubmitting}
+                    emptyMessage="All users already assigned"
+                    className="flex-1"
+                  />
 
                   <div className="relative sm:w-36">
                     <Input
@@ -809,22 +789,13 @@ export function TaskAssignmentPanel({ taskId, mode }: Props) {
                     key={row.key}
                     className="grid grid-cols-[1fr_7rem_2rem] gap-2 items-center"
                   >
-                    <Select
+                    <SearchableSelect
                       value={row.userId}
                       onValueChange={(v) => updateBulkRow(row.key, "userId", v)}
+                      options={allUsers.map((u) => ({ value: u.id.toString(), label: u.name }))}
+                      placeholder="Select user"
                       disabled={bulkSubmitting}
-                    >
-                      <SelectTrigger className="h-9 text-sm">
-                        <SelectValue placeholder="Select user" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {allUsers.map((u) => (
-                          <SelectItem key={u.id} value={u.id.toString()}>
-                            {u.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    />
 
                     <div className="relative">
                       <Input

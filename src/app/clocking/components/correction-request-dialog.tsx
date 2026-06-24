@@ -3,25 +3,18 @@
 // Accepts a real ClockRecordApiItem (API session), builds the request payload,
 // calls POST /clocking/correction-request, and returns the created correction.
 
-import { useState } from "react"
+import { useState, useEffect, useLayoutEffect, useRef } from "react"
 import { format, parseISO } from "date-fns"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
 } from "@/components/ui/dialog"
-import { HistoryIcon, ShieldCheckIcon, Loader2 } from "lucide-react"
+import { HistoryIcon, ShieldCheckIcon, Loader2, Clock, ChevronDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { isCancel } from "axios"
 import { toast } from "sonner"
 import { DateInput } from "@/components/ui/date-input"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import type { ClockRecordApiItem, ApiCorrectionType, PendingCorrectionApiItem } from "../data"
 
 // ─── Time picker helpers ──────────────────────────────────────────
@@ -50,6 +43,113 @@ function to24h(hour12: string, minute: string, period: "AM" | "PM"): string {
   return `${String(h).padStart(2, "0")}:${minute}`
 }
 import { clockingService } from "@/services/clockingService"
+
+// ─── Correction type options ──────────────────────────────────────
+
+// ─── Drum-roll time picker ────────────────────────────────────────
+
+const DRUM_ITEM_H = 36
+const DRUM_VISIBLE = 3
+const DRUM_PAD = Math.floor(DRUM_VISIBLE / 2) * DRUM_ITEM_H // 36px top/bottom padding
+// Vertical offset to centre the colon on the selected row
+const DRUM_COLON_TOP = DRUM_PAD + Math.floor(DRUM_ITEM_H / 2) - 10
+
+function DrumColumn({
+  items,
+  value,
+  onChange,
+}: {
+  items: string[]
+  value: string
+  onChange: (v: string) => void
+}) {
+  const listRef = useRef<HTMLDivElement>(null)
+  const scrollingRef = useRef(false)
+  const timerRef = useRef<ReturnType<typeof setTimeout>>()
+
+  useLayoutEffect(() => {
+    if (!listRef.current) return
+    const idx = Math.max(0, items.indexOf(value))
+    listRef.current.scrollTop = idx * DRUM_ITEM_H
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!listRef.current) return
+    const idx = Math.max(0, items.indexOf(value))
+    const target = idx * DRUM_ITEM_H
+    if (Math.abs(listRef.current.scrollTop - target) < 2) return
+    scrollingRef.current = true
+    listRef.current.scrollTo({ top: target, behavior: "smooth" })
+    const t = setTimeout(() => { scrollingRef.current = false }, 450)
+    return () => clearTimeout(t)
+  }, [value, items]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function handleScroll() {
+    if (scrollingRef.current) return
+    clearTimeout(timerRef.current)
+    timerRef.current = setTimeout(() => {
+      if (!listRef.current) return
+      const idx = Math.round(listRef.current.scrollTop / DRUM_ITEM_H)
+      const clamped = Math.max(0, Math.min(items.length - 1, idx))
+      scrollingRef.current = true
+      listRef.current.scrollTo({ top: clamped * DRUM_ITEM_H, behavior: "smooth" })
+      onChange(items[clamped])
+      setTimeout(() => { scrollingRef.current = false }, 450)
+    }, 150)
+  }
+
+  return (
+    <div
+      className="relative overflow-hidden"
+      style={{ height: DRUM_ITEM_H * DRUM_VISIBLE }}
+    >
+      {/* Neutral selection highlight — no brand colour */}
+      <div
+        className="pointer-events-none absolute inset-x-2 z-10 rounded-xl border border-foreground/[0.08] bg-foreground/[0.06]"
+        style={{ top: DRUM_PAD, height: DRUM_ITEM_H }}
+      />
+      {/* Fades — match bg-background of the drums row */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-[34px] bg-gradient-to-b from-background to-transparent" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[34px] bg-gradient-to-t from-background to-transparent" />
+      <div
+        ref={listRef}
+        className="h-full overflow-y-scroll"
+        style={{ scrollbarWidth: "none" } as React.CSSProperties}
+        onScroll={handleScroll}
+      >
+        <div style={{ height: DRUM_PAD }} />
+        {items.map((item) => (
+          <div
+            key={item}
+            className="flex cursor-pointer select-none items-center justify-center"
+            style={{ height: DRUM_ITEM_H }}
+            onClick={() => {
+              const idx = items.indexOf(item)
+              if (listRef.current) {
+                scrollingRef.current = true
+                listRef.current.scrollTo({ top: idx * DRUM_ITEM_H, behavior: "smooth" })
+                setTimeout(() => { scrollingRef.current = false }, 450)
+              }
+              onChange(item)
+            }}
+          >
+            <span
+              className={cn(
+                "transition-all duration-150",
+                item === value
+                  ? "text-xl font-bold text-foreground"
+                  : "text-sm font-medium text-muted-foreground/40"
+              )}
+            >
+              {item}
+            </span>
+          </div>
+        ))}
+        <div style={{ height: DRUM_PAD }} />
+      </div>
+    </div>
+  )
+}
 
 // ─── Correction type options ──────────────────────────────────────
 
@@ -101,6 +201,25 @@ export function CorrectionRequestDialog({
     setProposedTime(to24h(h, m, p))
   }
   const [submitting, setSubmitting] = useState(false)
+  const [timePickerOpen, setTimePickerOpen] = useState(false)
+  const timePickerRef = useRef<HTMLDivElement>(null)
+
+  // Set a default time whenever the dialog opens with no time chosen yet
+  useEffect(() => {
+    if (open && !proposedTime) setProposedTime("09:00")
+  }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Close time picker on outside click
+  useEffect(() => {
+    if (!timePickerOpen) return
+    function onMouseDown(e: MouseEvent) {
+      if (timePickerRef.current && !timePickerRef.current.contains(e.target as Node)) {
+        setTimePickerOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", onMouseDown)
+    return () => document.removeEventListener("mousedown", onMouseDown)
+  }, [timePickerOpen])
 
   if (!record) return null
 
@@ -117,6 +236,7 @@ export function CorrectionRequestDialog({
     setProposedDate("")
     setProposedTime("")
     setReason("")
+    setTimePickerOpen(false)
     onOpenChange(false)
   }
 
@@ -267,62 +387,101 @@ export function CorrectionRequestDialog({
                 <label className="mb-2 block text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                   Proposed Time (UTC)
                 </label>
-                {/* Unified pill — same visual weight as InputField but borderless between segments */}
-                <div className="group flex items-center overflow-hidden rounded-t-xl bg-muted/40 ring-1 ring-border/30 transition-all focus-within:ring-primary">
-                  {/* Hour */}
-                  <Select
-                    value={hour12}
-                    onValueChange={(v) => setTimePart(v, minute || "00", period)}
+                <div ref={timePickerRef} className="relative">
+                  {/* Trigger — same visual as InputField */}
+                  <button
+                    type="button"
+                    onClick={() => setTimePickerOpen((v) => !v)}
+                    className={cn(
+                      "flex h-12 w-full items-center gap-3 rounded-t-xl bg-muted/40 px-4",
+                      "ring-1 ring-border/30 transition-all hover:bg-muted/60",
+                      timePickerOpen && "ring-primary"
+                    )}
                   >
-                    <SelectTrigger className="flex-1 h-12 rounded-none border-none bg-transparent px-4 text-sm font-semibold shadow-none focus:ring-0 focus-visible:ring-0">
-                      <SelectValue placeholder="HH" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-52">
-                      {HOURS.map((h) => (
-                        <SelectItem key={h} value={h}>{h}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    <Clock className="size-4 shrink-0 text-muted-foreground/50" />
+                    <span
+                      className={cn(
+                        "flex-1 text-left text-sm",
+                        proposedTime ? "font-semibold text-foreground" : "text-muted-foreground/50"
+                      )}
+                    >
+                      {proposedTime
+                        ? `${hour12 || "09"}:${minute || "00"} ${period}`
+                        : "Select time"}
+                    </span>
+                    <ChevronDown
+                      className={cn(
+                        "size-4 shrink-0 text-muted-foreground/50 transition-transform duration-200",
+                        timePickerOpen && "rotate-180"
+                      )}
+                    />
+                  </button>
+                  {/* Bottom accent line — matches InputField */}
+                  <div
+                    className={cn(
+                      "h-0.5 transition-colors",
+                      timePickerOpen ? "bg-primary" : "bg-border/40"
+                    )}
+                  />
 
-                  <span className="shrink-0 text-muted-foreground/60 font-bold text-lg leading-none select-none">:</span>
-
-                  {/* Minute */}
-                  <Select
-                    value={minute}
-                    onValueChange={(v) => setTimePart(hour12 || "12", v, period)}
-                  >
-                    <SelectTrigger className="flex-1 h-12 rounded-none border-none bg-transparent px-4 text-sm font-semibold shadow-none focus:ring-0 focus-visible:ring-0">
-                      <SelectValue placeholder="MM" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-52">
-                      {MINUTES.map((m) => (
-                        <SelectItem key={m} value={m}>{m}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  {/* Divider */}
-                  <div className="h-5 w-px bg-border/40 shrink-0" />
-
-                  {/* AM / PM */}
-                  <Select
-                    value={period}
-                    onValueChange={(v) => setTimePart(hour12 || "12", minute || "00", v as "AM" | "PM")}
-                  >
-                    <SelectTrigger className="w-24 h-12 rounded-none border-none bg-transparent px-4 text-sm font-semibold shadow-none focus:ring-0 focus-visible:ring-0">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="AM">AM</SelectItem>
-                      <SelectItem value="PM">PM</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  {/* Bottom accent line — mirrors InputField */}
-                  <div className="pointer-events-none absolute bottom-0 left-0 h-0.5 w-full" />
+                  {/* Dropdown drum picker */}
+                  {timePickerOpen && (
+                    <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 overflow-hidden rounded-2xl border border-border/40 bg-background shadow-xl">
+                      {/* Column headers */}
+                      <div className="flex border-b border-border/30 bg-muted/30">
+                        <div className="flex-1 py-2 text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">Hour</div>
+                        <div className="w-8 shrink-0" />
+                        <div className="flex-1 py-2 text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">Min</div>
+                        <div className="w-px" />
+                        <div className="w-[60px] shrink-0 py-2 text-center text-[10px] font-bold uppercase tracking-widest text-muted-foreground/70">AM/PM</div>
+                      </div>
+                      {/* Drum columns */}
+                      <div className="flex items-start bg-background">
+                        <div className="flex-1">
+                          <DrumColumn
+                            items={HOURS}
+                            value={hour12 || "09"}
+                            onChange={(h) => setTimePart(h, minute || "00", period)}
+                          />
+                        </div>
+                        <div className="relative w-8 shrink-0 self-stretch">
+                          <span
+                            className="pointer-events-none absolute left-1/2 -translate-x-1/2 select-none text-base font-bold text-muted-foreground/30"
+                            style={{ top: DRUM_COLON_TOP }}
+                          >:</span>
+                        </div>
+                        <div className="flex-1">
+                          <DrumColumn
+                            items={MINUTES}
+                            value={minute || "00"}
+                            onChange={(m) => setTimePart(hour12 || "09", m, period)}
+                          />
+                        </div>
+                        <div className="w-px self-stretch bg-border/30" />
+                        <div className="w-[60px] shrink-0">
+                          <DrumColumn
+                            items={["AM", "PM"]}
+                            value={period}
+                            onChange={(p) =>
+                              setTimePart(hour12 || "09", minute || "00", p as "AM" | "PM")
+                            }
+                          />
+                        </div>
+                      </div>
+                      {/* Done button */}
+                      <div className="border-t border-border/30 bg-muted/20 p-3">
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="w-full"
+                          onClick={() => setTimePickerOpen(false)}
+                        >
+                          Done
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-                {/* bottom underline accent (replicates InputField) */}
-                <div className="h-0.5 bg-border/40 group-focus-within:bg-primary transition-colors" />
               </div>
             </div>
 

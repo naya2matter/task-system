@@ -249,7 +249,7 @@ export default function HelpRequestsPage() {
           {hasPermission("create help requests") && (
             <Button onClick={handleCreate} className="w-full sm:w-auto">
               <Plus className="size-4" />
-              New Request
+              New Help Request
             </Button>
           )}
         </div>

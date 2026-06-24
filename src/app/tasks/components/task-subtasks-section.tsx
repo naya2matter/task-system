@@ -535,15 +535,19 @@ function SubtaskForm({
 
         {/* Description — optional, full width */}
         <div className="sm:col-span-2 space-y-1">
-          <Label htmlFor="sub-desc" className="text-xs">Description <span className="text-muted-foreground">(optional)</span></Label>
-          <HtmlEditor
-            id="sub-desc"
-            value={description}
-            onChange={setDescription}
-            placeholder="Brief description of what needs to be done..."
-            disabled={loading}
-            minHeightClassName="min-h-24"
-          />
+          <Label htmlFor="sub-desc" className="text-xs">
+            Description <span className="text-muted-foreground">(optional)</span>
+          </Label>
+          <div className="overflow-hidden rounded-xl border border-border/40 bg-muted/20 ring-1 ring-border/20 transition-all focus-within:ring-primary">
+            <HtmlEditor
+              id="sub-desc"
+              value={description}
+              onChange={setDescription}
+              placeholder="Brief description of what needs to be done..."
+              disabled={loading}
+              minHeightClassName="min-h-24"
+            />
+          </div>
         </div>
 
         {/* is_complete checkbox — only shown in edit mode (showComplete=true) */}

@@ -39,7 +39,6 @@ import { isCancel } from "axios"
 import { cn } from "@/lib/utils"
 import { EmployeeCard } from "../components/employee-card"
 import { ActivityFeed } from "../components/activity-feed"
-import { SystemInsights } from "../components/system-insights"
 import { HandleCorrectionDialog } from "../components/handle-correction-dialog"
 import { AllRecordsTable } from "../components/all-records-table"
 import { ManagerExportDialog } from "../components/manager-export-dialog"
@@ -465,17 +464,12 @@ export default function ClockingSessionsPage() {
               </div>
             )}
 
-            {/* Activity Feed (derived from live sessions) + System Insights */}
-            <section className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-              <div className="lg:col-span-2">
-                <h3 className="mb-6 text-lg font-bold">Activity Flow</h3>
-                {activityEvents.length > 0
-                  ? <ActivityFeed events={activityEvents} />
-                  : <p className="text-sm text-muted-foreground">No active sessions to display.</p>}
-              </div>
-              <div>
-                <SystemInsights />
-              </div>
+            {/* Activity Feed (derived from live sessions) */}
+            <section>
+              <h3 className="mb-6 text-lg font-bold">Activity Flow</h3>
+              {activityEvents.length > 0
+                ? <ActivityFeed events={activityEvents} />
+                : <p className="text-sm text-muted-foreground">No active sessions to display.</p>}
             </section>
           </TabsContent>
 
