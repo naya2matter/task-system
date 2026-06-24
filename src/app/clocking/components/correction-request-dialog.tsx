@@ -65,7 +65,7 @@ function DrumColumn({
 }) {
   const listRef = useRef<HTMLDivElement>(null)
   const scrollingRef = useRef(false)
-  const timerRef = useRef<ReturnType<typeof setTimeout>>()
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   useLayoutEffect(() => {
     if (!listRef.current) return
