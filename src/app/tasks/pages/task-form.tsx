@@ -324,9 +324,12 @@ export function TaskForm({ mode, initialData, defaultProjectId, defaultSectionId
 
   // ── Assignment row helpers (create mode only) ──────────────────
 
-  // Append a blank row to the builder list
+  // Append a blank row to the builder list; first row defaults to 100%
   function addAssignmentRow() {
-    setAssignmentRows((prev) => [...prev, { key: Date.now(), userId: "", percentage: "" }])
+    setAssignmentRows((prev) => [
+      ...prev,
+      { key: Date.now(), userId: "", percentage: prev.length === 0 ? "100" : "" },
+    ])
   }
 
   // Remove a specific row by its local key
