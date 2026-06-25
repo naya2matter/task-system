@@ -461,6 +461,25 @@ export default function TicketsPage() {
       setPageView("list")
       return null
     }
+    // In edit mode, wait for ticket data before rendering the form so that
+    // useState initializers in TicketForm receive the actual values on first mount.
+    if (formMode === "edit" && !editTicket) {
+      return (
+        <div className="flex w-full justify-center p-4 md:p-8">
+          <div className="w-full max-w-4xl space-y-6">
+            <Skeleton className="h-16 w-72" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-36 w-full" />
+            <div className="grid grid-cols-2 gap-6">
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+              <Skeleton className="h-12 w-full" />
+            </div>
+            <Skeleton className="h-12 w-full" />
+          </div>
+        </div>
+      )
+    }
     return (
       <TicketForm
         mode={formMode}
