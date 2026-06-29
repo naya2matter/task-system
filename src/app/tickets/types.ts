@@ -6,7 +6,7 @@
 // Note: backend uses snake_case ("in_progress"), not hyphenated ("in-progress")
 
 export type ApiTicketStatus   = "open" | "in_progress" | "resolved"
-export type ApiTicketType     = "quick_fix" | "bug_investigation" | "user_support"
+export type ApiTicketType     = "quick_fix" | "bug_investigation" | "user_support" | "suggestion"
 export type ApiTicketPriority = "low" | "medium" | "high" | "critical"
 
 // ── User shape returned inside ticket relations ───────────────────────────────
@@ -97,6 +97,7 @@ export const TICKET_TYPE_LABELS: Record<ApiTicketType, string> = {
   quick_fix:         "Quick Fix",
   bug_investigation: "Bug Investigation",
   user_support:      "User Support",
+  suggestion:        "Suggestion",
 }
 
 export const TICKET_PRIORITY_LABELS: Record<ApiTicketPriority, string> = {

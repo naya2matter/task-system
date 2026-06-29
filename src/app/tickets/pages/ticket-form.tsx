@@ -29,6 +29,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { AlertCircle, ArrowLeft, Clipboard, Eye, FileText, Upload, X } from "lucide-react"
+import { SearchableSelect } from "@/components/ui/searchable-select"
 import {
   Dialog,
   DialogContent,
@@ -54,6 +55,7 @@ const typeOptions: { value: ApiTicketType; label: string }[] = [
   { value: "quick_fix",         label: TICKET_TYPE_LABELS.quick_fix },
   { value: "bug_investigation", label: TICKET_TYPE_LABELS.bug_investigation },
   { value: "user_support",      label: TICKET_TYPE_LABELS.user_support },
+  { value: "suggestion",        label: TICKET_TYPE_LABELS.suggestion },
 ]
 
 const priorityOptions: { value: ApiTicketPriority; label: string }[] = [
@@ -460,26 +462,17 @@ export function TicketForm({
                 {/* Assign To â€” user dropdown loaded from GET /users */}
                 <div className="space-y-2">
                   <Label>Assign To</Label>
-                  {usersLoading ? (
-                    <Skeleton className="h-12 w-full rounded-md" />
-                  ) : (
-                    <Select
-                      value={assignedTo || "none"}
-                      onValueChange={(v) => setAssignedTo(v === "none" ? "" : v)}
-                    >
-                      <SelectTrigger className="w-full h-12">
-                        <SelectValue placeholder="Unassigned" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Unassigned</SelectItem>
-                        {users.map((u) => (
-                          <SelectItem key={u.id} value={String(u.id)}>
-                            {u.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
+                  <SearchableSelect
+                    value={assignedTo || "none"}
+                    onValueChange={(v) => setAssignedTo(v === "none" ? "" : v)}
+                    options={[
+                      { value: "none", label: "Unassigned" },
+                      ...users.map((u) => ({ value: String(u.id), label: u.name })),
+                    ]}
+                    placeholder="Unassigned"
+                    loading={usersLoading}
+                    emptyMessage="No users found."
+                  />
                 </div>
               </div>
             </section>

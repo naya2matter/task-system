@@ -3,6 +3,7 @@ import { createPortal } from "react-dom"
 import { useNavigate } from "react-router"
 import { isCancel } from "axios"
 import { toast } from "sonner"
+import { usePermissions } from "@/hooks/usePermissions"
 import { Card } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
@@ -138,8 +139,8 @@ const SortableTaskCard = memo(function SortableTaskCard({
   isDeleting,
 }: {
   task: KanbanTask
-  onEditTask: (task: KanbanTask) => void
-  onDeleteTask: (task: KanbanTask) => void
+  onEditTask?: (task: KanbanTask) => void
+  onDeleteTask?: (task: KanbanTask) => void
   isDeleting?: boolean
 }) {
   const {
@@ -244,7 +245,7 @@ const TaskCardInner = memo(function TaskCardInner({
               <CheckSquare className="size-3" />
             </div>
           )}
-          {!isOverlay && onEditTask && onDeleteTask && (
+          {!isOverlay && onDeleteTask && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -259,15 +260,17 @@ const TaskCardInner = memo(function TaskCardInner({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" onCloseAutoFocus={(e) => e.preventDefault()}>
-                <DropdownMenuItem
-                  onSelect={(e) => {
-                    e.preventDefault()
-                    onEditTask(task)
-                  }}
-                >
-                  <Pencil className="size-3.5" />
-                  Edit Task
-                </DropdownMenuItem>
+                {onEditTask && (
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault()
+                      onEditTask(task)
+                    }}
+                  >
+                    <Pencil className="size-3.5" />
+                    Edit Task
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem
                   variant="destructive"
                   disabled={isDeleting}
@@ -319,8 +322,8 @@ function KanbanColumnView({
 }: {
   column: BoardColumn
   isOver?: boolean
-  onEditTask: (task: KanbanTask) => void
-  onDeleteTask: (task: KanbanTask) => void
+  onEditTask?: (task: KanbanTask) => void
+  onDeleteTask?: (task: KanbanTask) => void
   deletingTaskId: number | null
 }) {
   const { setNodeRef: setDroppableRef, isOver: isDroppableOver } = useDroppable({ id: column.id })
@@ -369,6 +372,9 @@ function KanbanColumnView({
 /** Main Kanban board — renders sections and status columns from API data */
 export function KanbanBoard({ kanban, onBack }: KanbanBoardProps) {
   const navigate = useNavigate()
+  const { hasPermission } = usePermissions()
+  const canEdit   = hasPermission("edit tasks")
+  const canDelete = hasPermission("delete tasks")
   const [sections, setSections] = useState<BoardSection[]>(() =>
     buildBoardSections(kanban.sections),
   )
@@ -658,8 +664,8 @@ export function KanbanBoard({ kanban, onBack }: KanbanBoardProps) {
                     key={col.id}
                     column={col}
                     isOver={hoveredColumn === col.id}
-                    onEditTask={handleEditTask}
-                    onDeleteTask={handleDeleteTaskClick}
+                    onEditTask={canEdit ? handleEditTask : undefined}
+                    onDeleteTask={canDelete ? handleDeleteTaskClick : undefined}
                     deletingTaskId={deletingTaskId}
                   />
                 ))}
