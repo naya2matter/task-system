@@ -24,7 +24,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
-import { Skeleton } from "@/components/ui/skeleton"
 import {
   AlertCircle,
   CheckCircle2,
@@ -34,6 +33,7 @@ import {
   Upload,
   X,
 } from "lucide-react"
+import { SearchableSelect } from "@/components/ui/searchable-select"
 import { ticketsService } from "@/app/tickets/services/ticketsService"
 import { usersService } from "@/services/usersService"
 import type {
@@ -499,26 +499,17 @@ export default function SupportTicketPage() {
                 {isLoggedIn && (
                   <div className="space-y-1.5">
                     <Label htmlFor="assignedTo">Assign To</Label>
-                    {usersLoading ? (
-                      <Skeleton className="h-9 w-full rounded-md" />
-                    ) : (
-                      <Select
-                        value={assignedTo || "none"}
-                        onValueChange={(v) => setAssignedTo(v === "none" ? "" : v)}
-                      >
-                        <SelectTrigger id="assignedTo">
-                          <SelectValue placeholder="Unassigned" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Unassigned</SelectItem>
-                          {users.map((u) => (
-                            <SelectItem key={u.id} value={String(u.id)}>
-                              {u.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
+                    <SearchableSelect
+                      value={assignedTo || "none"}
+                      onValueChange={(v) => setAssignedTo(v === "none" ? "" : v)}
+                      options={[
+                        { value: "none", label: "Unassigned" },
+                        ...users.map((u) => ({ value: String(u.id), label: u.name })),
+                      ]}
+                      placeholder="Unassigned"
+                      loading={usersLoading}
+                      emptyMessage="No users found."
+                    />
                   </div>
                 )}
               </div>

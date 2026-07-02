@@ -83,6 +83,7 @@ const typeOptions: { value: ApiTicketType | "all"; label: string }[] = [
   { value: "quick_fix",         label: TICKET_TYPE_LABELS.quick_fix },
   { value: "bug_investigation", label: TICKET_TYPE_LABELS.bug_investigation },
   { value: "user_support",      label: TICKET_TYPE_LABELS.user_support },
+  { value: "suggestion",        label: TICKET_TYPE_LABELS.suggestion },
 ]
 
 export default function TicketsPage() {

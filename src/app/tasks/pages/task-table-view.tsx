@@ -62,8 +62,8 @@ const priorityVariant: Record<string, "default" | "secondary" | "destructive" | 
   low: "secondary",
 }
 
-// â”€â”€â”€ Rating Column
-// Shows the latest_final_rating (0â€“100) from GET /tasks/{taskId}/ratings.
+// â"€â"€â"€ Rating Column
+// Shows the latest_final_rating (0â€"100) from GET /tasks/{taskId}/ratings.
 // The task's latest_final_rating field already contains the most recent final score.
 function RatingBadge({ rating }: { rating: number | null }) {
   if (rating === null) return <span className="text-xs text-muted-foreground">-</span>
@@ -84,7 +84,7 @@ function RatingBadge({ rating }: { rating: number | null }) {
   )
 }
 
-// â”€â”€â”€ Subtasks Progress Column â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â"€â"€â"€ Subtasks Progress Column â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
 // Visualises subtask completion from the task.subtasks embedded array
 // (the same data that GET /tasks/{taskId}/subtasks returns per task).
 // Shows a compact progress bar + fraction count so the column stays narrow.
@@ -153,14 +153,14 @@ export function TaskTableView({ tasks, onSelect, onEdit, onDelete, onRate, canEd
             {/* Hidden below lg */}
             <TableHead className="hidden lg:table-cell">Project</TableHead>
 
-            {/* Rating column â€” always visible; data from task.latest_final_rating
+            {/* Rating column â€" always visible; data from task.latest_final_rating
                 (sourced from GET /tasks/{taskId}/ratings aggregation on the backend) */}
             <TableHead>Rating</TableHead>
 
             {/* Hidden on xs, visible from sm up */}
             <TableHead className="hidden sm:table-cell">Due Date</TableHead>
 
-            {/* Subtasks column â€” always visible; data from task.subtasks array
+            {/* Subtasks column â€" always visible; data from task.subtasks array
                 (mirrors what GET /tasks/{taskId}/subtasks returns for each task) */}
             <TableHead>
               <span className="flex items-center gap-1">
@@ -169,8 +169,9 @@ export function TaskTableView({ tasks, onSelect, onEdit, onDelete, onRate, canEd
               </span>
             </TableHead>
 
-            {/* Actions â€” always visible */}
-            <TableHead className="text-right w-10">Actions</TableHead>
+            {(canEdit || canDelete || canRate) && (
+              <TableHead className="text-right w-10">Actions</TableHead>
+            )}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -208,14 +209,14 @@ export function TaskTableView({ tasks, onSelect, onEdit, onDelete, onRate, canEd
                   </Badge>
                 </TableCell>
 
-                {/*  Priority badge â€” hidden on mobile  */}
+                {/*  Priority badge â€" hidden on mobile  */}
                 <TableCell className="hidden sm:table-cell py-3">
                   <Badge variant={priorityVariant[task.priority] ?? "outline"} className="capitalize text-xs">
                     {task.priority}
                   </Badge>
                 </TableCell>
 
-                {/*  Stacked avatars â€” hidden on mobile/tablet  */}
+                {/*  Stacked avatars â€" hidden on mobile/tablet  */}
                 <TableCell className="hidden md:table-cell py-3">
                   <div className="flex -space-x-2">
                     {task.assigned_users.slice(0, 3).map((user) => (
@@ -237,7 +238,7 @@ export function TaskTableView({ tasks, onSelect, onEdit, onDelete, onRate, canEd
                   </div>
                 </TableCell>
 
-                {/*  Project badge â€” hidden below lg  */}
+                {/*  Project badge â€" hidden below lg  */}
                 <TableCell className="hidden lg:table-cell py-3">
                   <div className="max-w-45 overflow-hidden">
                     <Badge variant="secondary" className="text-xs block text-left">
@@ -249,13 +250,13 @@ export function TaskTableView({ tasks, onSelect, onEdit, onDelete, onRate, canEd
                   </div>
                 </TableCell>
 
-                {/*  Rating â€” from task.latest_final_rating
+                {/*  Rating â€" from task.latest_final_rating
                       (reflects the aggregated value from GET /tasks/{taskId}/ratings)  */}
                 <TableCell className="py-3">
                   <RatingBadge rating={task.latest_final_rating} />
                 </TableCell>
 
-                {/*  Due date â€” hidden on mobile  */}
+                {/*  Due date â€" hidden on mobile  */}
                 <TableCell className="hidden sm:table-cell text-muted-foreground py-3 text-xs font-mono whitespace-nowrap">
                   {task.due_date}
                 </TableCell>
@@ -267,8 +268,8 @@ export function TaskTableView({ tasks, onSelect, onEdit, onDelete, onRate, canEd
                 </TableCell>
 
                 {/*  Actions dropdown  */}
+                {(canEdit || canDelete || canRate) && (
                 <TableCell className="text-right py-3">
-                  {(canEdit || canDelete || canRate) && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
@@ -304,8 +305,8 @@ export function TaskTableView({ tasks, onSelect, onEdit, onDelete, onRate, canEd
                       )}
                     </DropdownMenuContent>
                   </DropdownMenu>
-                  )}
                 </TableCell>
+                )}
               </TableRow>
             )
           })}
