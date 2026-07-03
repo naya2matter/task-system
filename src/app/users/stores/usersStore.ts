@@ -19,12 +19,27 @@ import type { ApiTicket } from "@/app/tickets/types"
 // ─── Helper: extract a user-friendly error from Axios errors ──────────────────
 function extractErrorMessage(err: unknown, fallback: string): string {
   if (err instanceof AxiosError) {
+    const status = err.response?.status
     const data = err.response?.data as ApiValidationError | undefined
-    // If the backend returned validation errors, join them into one string
+
+    // Field-level validation errors — join them into one readable string
     if (data?.errors) {
       return Object.values(data.errors).flat().join(". ")
     }
-    // Otherwise use the top-level message
+
+    // No response at all — network/timeout failure
+    if (!err.response) {
+      return "Network error. Please check your connection and try again."
+    }
+
+    // Framework-level failures (wrong HTTP method, server crash, expired
+    // session token, ...) surface raw technical text — prefer the caller's
+    // fallback over exposing that to the user.
+    if (status === 405 || status === 419 || (status !== undefined && status >= 500)) {
+      return fallback
+    }
+
+    // Otherwise the backend sent an app-crafted, user-facing message
     if (data?.message) return data.message
   }
   return fallback

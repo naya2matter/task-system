@@ -1,8 +1,7 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
@@ -30,8 +29,6 @@ export type UserFormData = {
   name: string
   email: string
   password: string
-  avatar: File | null
-  removeAvatar: boolean
 }
 
 export function UserForm({
@@ -47,12 +44,7 @@ export function UserForm({
   const [email, setEmail] = useState(initialData?.email ?? "")
   // Password is required on create, optional on edit
   const [password, setPassword] = useState("")
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(initialData?.avatarUrl ?? null)
-  const [removeAvatar, setRemoveAvatar] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
-  const prevObjectUrl = useRef<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement | null>(null)
-  const [avatarFile, setAvatarFile] = useState<File | null>(null)
 
   // ── Roles & Permissions ─────────────────────────────────────────────────────
   const {
@@ -81,20 +73,12 @@ export function UserForm({
 
   const isBusy = submitting || syncing
 
-  // Reset preview when switching between create ↔ edit
+  // Reset fields when switching between create ↔ edit
   useEffect(() => {
-    setAvatarPreview(initialData?.avatarUrl ?? null)
-    setRemoveAvatar(false)
-    setAvatarFile(null)
-    if (fileInputRef.current) fileInputRef.current.value = ""
+    setName(initialData?.name ?? "")
+    setEmail(initialData?.email ?? "")
+    setPassword("")
   }, [initialData])
-
-  // Cleanup object URLs on unmount
-  useEffect(() => {
-    return () => {
-      if (prevObjectUrl.current) URL.revokeObjectURL(prevObjectUrl.current)
-    }
-  }, [])
 
   // ── Client-side validation ──────────────────────────────────────────────────
   function validate() {
@@ -119,8 +103,6 @@ export function UserForm({
         name,
         email,
         password,
-        avatar: avatarFile,
-        removeAvatar,
       })
       if (!userId) return
 
@@ -131,32 +113,6 @@ export function UserForm({
 
       onSuccess?.()
     })()
-  }
-
-  // ── Avatar helpers ──────────────────────────────────────────────────────────
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0] ?? null
-    setAvatarFile(file)
-    if (file) {
-      setRemoveAvatar(false)
-      const url = URL.createObjectURL(file)
-      if (prevObjectUrl.current) URL.revokeObjectURL(prevObjectUrl.current)
-      prevObjectUrl.current = url
-      setAvatarPreview(url)
-    } else {
-      setAvatarPreview(initialData?.avatarUrl ?? null)
-    }
-  }
-
-  function handleClearAvatar() {
-    if (prevObjectUrl.current) {
-      URL.revokeObjectURL(prevObjectUrl.current)
-      prevObjectUrl.current = null
-    }
-    setAvatarFile(null)
-    setRemoveAvatar(Boolean(initialData?.avatarUrl))
-    setAvatarPreview(null)
-    if (fileInputRef.current) fileInputRef.current.value = ""
   }
 
   return (
@@ -202,86 +158,57 @@ export function UserForm({
                   Personal Information
                 </h3>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Name */}
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Full Name</Label>
-                    <Input
-                      id="name"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="Enter full name"
-                      className="h-12 text-sm"
-                      disabled={isBusy}
-                    />
-                    {errors.name && (
-                      <p className="text-sm text-destructive mt-1">{errors.name}</p>
-                    )}
-                  </div>
-                  {/* Email */}
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email Address</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="Enter email address"
-                      className="h-12 text-sm"
-                      disabled={isBusy}
-                    />
-                    {errors.email && (
-                      <p className="text-sm text-destructive mt-1">{errors.email}</p>
-                    )}
-                  </div>
-                  {/* Password */}
-                  <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="password">
-                      Password{mode === "edit" && <span className="text-muted-foreground ml-1">(leave blank to keep current)</span>}
-                    </Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder={mode === "create" ? "Enter password" : "New password (optional)"}
-                      className="h-12 text-sm"
-                      disabled={isBusy}
-                      autoComplete="new-password"
-                    />
-                    {errors.password && (
-                      <p className="text-sm text-destructive mt-1">{errors.password}</p>
-                    )}
-                  </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Name */}
+                <div className="space-y-2">
+                  <Label htmlFor="name">Full Name</Label>
+                  <Input
+                    id="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Enter full name"
+                    className="h-12 text-sm"
+                    disabled={isBusy}
+                  />
+                  {errors.name && (
+                    <p className="text-sm text-destructive mt-1">{errors.name}</p>
+                  )}
                 </div>
-
-                {/* Avatar / preview column */}
-                <aside className="md:col-span-1 flex flex-col items-center gap-4">
-                  <div className="flex flex-col items-center gap-3">
-                    <Avatar size="lg" className="size-28">
-                      <AvatarImage src={avatarPreview ?? undefined} alt={name || "Avatar"} />
-                      <AvatarFallback>{name ? name.split(" ").map(n => n[0]).join("") : "U"}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex gap-2">
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/*"
-                        className="sr-only"
-                        onChange={handleFileChange}
-                        aria-label="Upload avatar"
-                      />
-                      <Button type="button" size="sm" onClick={() => fileInputRef.current?.click()} disabled={isBusy}>
-                        Upload
-                      </Button>
-                      <Button type="button" size="sm" variant="ghost" onClick={handleClearAvatar} disabled={isBusy}>
-                        Clear
-                      </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground text-center">Recommended: 256x256 PNG/JPEG</p>
-                  </div>
-                </aside>
+                {/* Email */}
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email Address</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Enter email address"
+                    className="h-12 text-sm"
+                    disabled={isBusy}
+                  />
+                  {errors.email && (
+                    <p className="text-sm text-destructive mt-1">{errors.email}</p>
+                  )}
+                </div>
+                {/* Password */}
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="password">
+                    Password{mode === "edit" && <span className="text-muted-foreground ml-1">(leave blank to keep current)</span>}
+                  </Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder={mode === "create" ? "Enter password" : "New password (optional)"}
+                    className="h-12 text-sm"
+                    disabled={isBusy}
+                    autoComplete="new-password"
+                  />
+                  {errors.password && (
+                    <p className="text-sm text-destructive mt-1">{errors.password}</p>
+                  )}
+                </div>
               </div>
             </section>
 

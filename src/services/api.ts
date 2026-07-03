@@ -82,6 +82,49 @@ class ApiClient {
 
   // ─── Interceptors ──────────────────────────────────────────────
 
+  /**
+   * Turns an Axios error into a message that's safe and useful to show a user.
+   * Field-level validation messages (422) are already user-facing copy written
+   * by the backend, so those pass through as-is. Framework-level failures
+   * (405, 500, network drops, etc.) surface raw technical text like
+   * "The POST method is not supported for route api/users/15" — those get
+   * replaced with plain-language copy instead.
+   */
+  private getToastErrorMessage(error: unknown): string {
+    const axiosError = error as {
+      response?: { status?: number; data?: { message?: string; errors?: Record<string, string[]> } };
+    };
+    const status = axiosError?.response?.status;
+    const data = axiosError?.response?.data;
+
+    // Field-level validation errors — show the first specific message
+    const firstFieldError = data?.errors ? Object.values(data.errors).flat()[0] : undefined;
+    if (firstFieldError) return String(firstFieldError);
+
+    // No response at all — network/timeout failure
+    if (!axiosError?.response) {
+      return "Network error. Please check your connection and try again.";
+    }
+
+    switch (status) {
+      case 401:
+        return "Your session has expired. Please log in again.";
+      case 403:
+        return "You don't have permission to perform this action.";
+      case 404:
+        return data?.message || "The requested item could not be found.";
+      case 419:
+        return "Your session has expired. Please refresh the page and try again.";
+      case 405:
+      case 500:
+      case 502:
+      case 503:
+        return "Something went wrong on our end. Please try again in a moment.";
+      default:
+        return data?.message || "Something went wrong. Please try again.";
+    }
+  }
+
   // Allow callers to pass `toast` messages through config: { toast: { success, error } }
   private setupInterceptors(): void {
     this.client.interceptors.request.use((config) => {
@@ -113,9 +156,8 @@ class ApiClient {
         try {
           const cfg = error?.config as AxiosRequestConfig & { toast?: { error?: string } } | undefined;
 
-          // If backend sent a message use it, otherwise allow per-request override
-          const serverMessage = error?.response?.data?.message;
-          const toastMessage = cfg?.toast?.error ?? serverMessage;
+          // Per-request override takes priority, otherwise derive a friendly message
+          const toastMessage = cfg?.toast?.error ?? this.getToastErrorMessage(error);
           if (toastMessage) toast.error(String(toastMessage));
         } catch (err) {
           // swallow
