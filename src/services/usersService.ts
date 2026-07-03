@@ -92,7 +92,6 @@ export interface CreateUserPayload {
   name: string
   email: string
   password: string
-  avatar?: File | null
 }
 
 /** Body sent to PUT /users/{id} — password is optional */
@@ -100,34 +99,6 @@ export interface UpdateUserPayload {
   name?: string
   email?: string
   password?: string | null
-  avatar?: File | null
-  removeAvatar?: boolean
-}
-
-function buildUserFormData(payload: CreateUserPayload | UpdateUserPayload): FormData {
-  const formData = new FormData()
-
-  if (payload.name !== undefined) {
-    formData.append("name", payload.name)
-  }
-
-  if (payload.email !== undefined) {
-    formData.append("email", payload.email)
-  }
-
-  if (payload.password) {
-    formData.append("password", payload.password)
-  }
-
-  if (payload.avatar) {
-    formData.append("avatar", payload.avatar)
-  }
-
-  if ("removeAvatar" in payload && payload.removeAvatar) {
-    formData.append("remove_avatar", "1")
-  }
-
-  return formData
 }
 
 // ─── Single-user API response shape ──────────────────────────────────────────
@@ -203,8 +174,7 @@ export const usersService = {
    * Returns the created user mapped to the UI type.
    */
   create: async (payload: CreateUserPayload): Promise<User> => {
-    const formData = buildUserFormData(payload)
-    const raw = (await apiClient.postMultipart<never>("/users", formData, {
+    const raw = (await apiClient.post<never>("/users", payload, {
       toast: { success: "User created successfully" },
     } as AxiosRequestConfig)) as unknown as SingleUserResponse
     return mapApiUserToUiUser(raw.data)
@@ -215,10 +185,9 @@ export const usersService = {
    * Returns the updated user mapped to the UI type.
    */
   update: async (userId: string, payload: UpdateUserPayload): Promise<User> => {
-    const formData = buildUserFormData(payload)
-    const raw = (await apiClient.postMultipart<never>(
+    const raw = (await apiClient.put<never>(
       `/users/${userId}`,
-      formData,
+      payload,
       { toast: { success: "User updated successfully" } } as AxiosRequestConfig,
     )) as unknown as SingleUserResponse
     return mapApiUserToUiUser(raw.data)

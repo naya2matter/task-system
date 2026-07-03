@@ -202,6 +202,24 @@ export function TaskForm({ mode, initialData, defaultProjectId, defaultSectionId
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // ── Sync form fields when initialData arrives asynchronously ───
+  // On a direct navigation to /tasks/:id/edit (fresh page load, not via a
+  // list-row click), initialData starts out null and only resolves once
+  // GET /tasks/{id} returns. Without this effect the fields stay stuck at
+  // their empty mount-time defaults even after the task data shows up.
+  useEffect(() => {
+    if (!initialData) return
+    setName(initialData.name ?? "")
+    setDescription(initialData.description ?? "")
+    setStatus(initialData.status ?? "pending")
+    setPriority(initialData.priority ?? "medium")
+    setWeight(initialData.weight ?? 1)
+    setDueDate(initialData.due_date ?? "")
+    setSelectedProjectId(initialData.section?.project_id ?? defaultProjectId ?? null)
+    setSectionId(initialData.section_id ?? defaultSectionId ?? null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialData])
+
   // ── Client-side validation ─────────────────────────────────────
   function validate(): boolean {
     const next: Record<string, string> = {}

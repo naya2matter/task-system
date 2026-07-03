@@ -153,7 +153,6 @@ export default function UsersPage() {
         name: data.name,
         email: data.email,
         password: data.password,
-        avatar: data.avatar,
       })
       if (createdUser) return createdUser.id
     } else if (selectedUser) {
@@ -162,8 +161,6 @@ export default function UsersPage() {
         name: data.name,
         email: data.email,
         ...(data.password ? { password: data.password } : {}),
-        avatar: data.avatar,
-        removeAvatar: data.removeAvatar,
       })
       if (ok) return selectedUser.id
     }
