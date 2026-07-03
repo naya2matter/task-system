@@ -79,7 +79,7 @@ export default function RightOverviewPanel({
                 size="icon"
                 className="size-8 rounded-full"
                 aria-label="Edit profile"
-                onClick={() => navigate("/users", { state: { editUserId: String(user?.id) } })}
+                onClick={() => navigate(`/users/${user?.id}/edit`)}
               >
                 <Edit className="size-3.5" />
               </Button>
@@ -334,7 +334,7 @@ export default function RightOverviewPanel({
                       size="icon"
                       className="size-8 rounded-full"
                       aria-label="Edit profile"
-                      onClick={() => navigate("/users", { state: { editUserId: String(user?.id) } })}
+                      onClick={() => navigate(`/users/${user?.id}/edit`)}
                     >
                       <Edit className="size-3.5" />
                     </Button>

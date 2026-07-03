@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react"
-import { BrowserRouter, Routes, Route } from "react-router"
+import { BrowserRouter, Routes, Route, Navigate } from "react-router"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Toaster } from "@/components/ui/sonner"
 import { ThemeProvider } from "@/components/theme-provider"
@@ -72,6 +72,8 @@ function App() {
                 <Route element={<AuthGuard><Layout /></AuthGuard>}>
                   <Route index element={<DashboardPage />} />
                   <Route path="users" element={<UsersPage />} />
+                  <Route path="users/create" element={<ProtectedRoute permission="create users" fallback={<Navigate to="/users" replace />}><UsersPage /></ProtectedRoute>} />
+                  <Route path="users/:id/edit" element={<ProtectedRoute permission="edit users" fallback={<Navigate to="/users" replace />}><UsersPage /></ProtectedRoute>} />
                   <Route path="projects" element={<ProtectedRoute permission="view projects"><ProjectsPage /></ProtectedRoute>} />
                   <Route path="projects/create" element={<ProtectedRoute permission="create projects"><CreateProjectPage /></ProtectedRoute>} />
                   <Route path="projects/:id/edit" element={<ProtectedRoute permission="edit projects"><EditProjectPage /></ProtectedRoute>} />
