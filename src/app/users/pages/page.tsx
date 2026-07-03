@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react"
-import { useLocation } from "react-router"
+import { useLocation, useNavigate, useParams } from "react-router"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -23,8 +23,18 @@ import { usersService } from "@/services/usersService"
 type ViewMode = "table" | "grid"
 type PageView = "list" | "form"
 
+// Shape passed via React Router location.state when navigating to the edit
+// route from a place that already has the full user object in hand (e.g. a
+// table row click) — lets the form render instantly instead of waiting on
+// a GET /users/{id} round trip.
+interface UserFormLocationState {
+  editUser?: User
+}
+
 export default function UsersPage() {
   const location = useLocation()
+  const navigate = useNavigate()
+  const { id: urlId } = useParams<{ id?: string }>()
   const [view, setView] = useState<ViewMode>("table")
   const [search, setSearch] = useState("")
 
@@ -36,12 +46,26 @@ export default function UsersPage() {
   const canEditUsers   = hasPermission("edit users")
   const canDeleteUsers = hasPermission("delete users")
 
-  // Page-level view state (list vs create/edit form)
-  const [pageView, setPageView] = useState<PageView>("list")
-  const [formMode, setFormMode] = useState<"create" | "edit">("create")
+  // Determine if we're on a sub-route (/users/create, /users/:id/edit) —
+  // these render the form instead of the list, and drive the breadcrumb.
+  const isCreateRoute = location.pathname.endsWith("/create")
+  const isEditRoute   = !!urlId && location.pathname.endsWith("/edit")
 
-  // The user currently being edited (null for create)
-  const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  // Page-level view state (list vs create/edit form), seeded from the URL
+  // so a direct load of /users/create or /users/:id/edit renders correctly.
+  const [pageView, setPageView] = useState<PageView>(() =>
+    (isCreateRoute || isEditRoute) ? "form" : "list"
+  )
+  const [formMode, setFormMode] = useState<"create" | "edit">(() =>
+    isEditRoute ? "edit" : "create"
+  )
+
+  // The user currently being edited (null for create). Seed from
+  // navigation state so the form is available instantly when coming from
+  // a row click; falls back to a fresh fetch below for direct URL loads.
+  const [selectedUser, setSelectedUser] = useState<User | null>(
+    () => (location.state as UserFormLocationState | null)?.editUser ?? null
+  )
 
   // Sheet (detail panel) state
   const [sheetOpen, setSheetOpen] = useState(false)
@@ -60,30 +84,68 @@ export default function UsersPage() {
     submitting,
     submitError,
     fetchUsers,
+    getUser,
+    selectedUser: fetchedUser,
     createUser,
     updateUser,
     deleteUser: deleteUserApi,
     clearSubmitError,
   } = useUsers()
 
-  // ── Deep-link from dashboard (TeamCarousel card click or profile buttons) ───
+  // Keep pageView/formMode in sync with the URL (covers in-app navigation
+  // between /users/create and /users/:id/edit, not just the initial load).
   useEffect(() => {
-    const state = location.state as { openUserId?: string; editUserId?: string } | null
-    if (!state) return
-
-    if (state.openUserId) {
-      usersService.getById(state.openUserId).then((user) => {
-        setSheetUser(user)
-        setSheetOpen(true)
-      }).catch(() => {})
-    } else if (state.editUserId) {
-      usersService.getById(state.editUserId).then((user) => {
-        clearSubmitError()
-        setSelectedUser(user)
-        setFormMode("edit")
-        setPageView("form")
-      }).catch(() => {})
+    if (isCreateRoute || isEditRoute) {
+      setPageView("form")
+      setFormMode(isEditRoute ? "edit" : "create")
+    } else {
+      setPageView("list")
     }
+  }, [isCreateRoute, isEditRoute])
+
+  // Keep selectedUser in sync with the URL. Since UsersPage stays mounted
+  // across /users/create <-> /users/:id/edit navigations (same component,
+  // different route), state from a previous target would otherwise leak
+  // into the next view (e.g. a stale user pre-filling the create form).
+  useEffect(() => {
+    if (isCreateRoute) {
+      setSelectedUser(null)
+      return
+    }
+    if (isEditRoute && urlId) {
+      const stateUser = (location.state as UserFormLocationState | null)?.editUser
+      setSelectedUser(stateUser && stateUser.id === urlId ? stateUser : null)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCreateRoute, isEditRoute, urlId])
+
+  // Direct load of /users/:id/edit (fresh page load, or switching straight
+  // from one edit target to another) — fetch the user by id. This also
+  // populates the store's selectedUser so the breadcrumb can show the
+  // user's name instead of a raw id.
+  useEffect(() => {
+    if (isEditRoute && urlId && !selectedUser) {
+      getUser(urlId)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditRoute, urlId, selectedUser])
+
+  // Hydrate local selectedUser once the fetch above resolves.
+  useEffect(() => {
+    if (!fetchedUser || !urlId) return
+    if (isEditRoute && fetchedUser.id === urlId && !selectedUser) setSelectedUser(fetchedUser)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fetchedUser])
+
+  // ── Deep-link from dashboard (TeamCarousel card click) — opens the detail sheet ───
+  useEffect(() => {
+    const state = location.state as { openUserId?: string } | null
+    if (!state?.openUserId) return
+
+    usersService.getById(state.openUserId).then((user) => {
+      setSheetUser(user)
+      setSheetOpen(true)
+    }).catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -111,16 +173,12 @@ export default function UsersPage() {
 
   function handleCreate() {
     clearSubmitError()
-    setSelectedUser(null)
-    setFormMode("create")
-    setPageView("form")
+    navigate("/users/create")
   }
 
   function handleEdit(user: User) {
     clearSubmitError()
-    setSelectedUser(user)
-    setFormMode("edit")
-    setPageView("form")
+    navigate(`/users/${user.id}/edit`, { state: { editUser: user } })
     setSheetOpen(false)
   }
 
@@ -169,8 +227,7 @@ export default function UsersPage() {
 
   function handleFormCancel() {
     clearSubmitError()
-    setPageView("list")
-    setSelectedUser(null)
+    navigate("/users")
   }
 
   // ── Change API page ─────────────────────────────────────────────────────────
@@ -180,19 +237,9 @@ export default function UsersPage() {
   }
 
   // ── Form view ───────────────────────────────────────────────────────────────
-  // Guard: only users with the matching permission may access the form.
-  // If someone bypasses the button (e.g. direct state manipulation) they
-  // are silently dropped back to the list.
+  // Permission gating for /users/create and /users/:id/edit is handled at
+  // the router level (see App.tsx), so no in-render redirect is needed here.
   if (pageView === "form") {
-    const hasFormPermission =
-      formMode === "create" ? canCreateUsers : canEditUsers
-
-    if (!hasFormPermission) {
-      // Fall back to list silently — no permission to create/edit
-      setPageView("list")
-      return null
-    }
-
     return (
       <UserForm
         mode={formMode}
@@ -201,10 +248,7 @@ export default function UsersPage() {
         submitError={submitError}
         onSubmit={handleFormSubmit}
         onCancel={handleFormCancel}
-        onSuccess={() => {
-          setPageView("list")
-          setSelectedUser(null)
-        }}
+        onSuccess={() => navigate("/users")}
       />
     )
   }

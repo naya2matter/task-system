@@ -6,6 +6,7 @@ import { useHelpRequestsStore } from "@/app/help-requests/store/helpRequestStore
 import { useWorkspaceStore } from "@/app/workspaces/store/workspaceStore"
 import { useTicketsStore } from "@/app/tickets/store/ticketStore"
 import { useRatingConfigStore } from "@/app/ratings/configurations/store/ratingConfigStore"
+import { useUsersStore } from "@/app/users/stores/usersStore"
 
 export interface BreadcrumbItem {
   label: string
@@ -27,6 +28,7 @@ export function useBreadcrumbs(): BreadcrumbItem[] {
   const selectedTodo = useWorkspaceStore((s) => s.selectedTodo)
   const selectedTicket = useTicketsStore((s) => s.selectedTicket)
   const selectedRatingConfig = useRatingConfigStore((s) => s.selectedConfig)
+  const selectedUser = useUsersStore((s) => s.selectedUser)
 
   return useMemo(() => {
     const segments = pathname.split("/").filter(Boolean)
@@ -108,6 +110,21 @@ export function useBreadcrumbs(): BreadcrumbItem[] {
       if (seg === "edit") {
         items.push({ label: "Edit" })
         break
+      }
+
+      // Users/:id — no standalone detail page exists (viewing a user is a
+      // sheet over the list), so this segment is never a link.
+      if (prev === "users") {
+        const userId = seg
+        const stateUser = (routeState as { editUser?: { id: string; name: string } } | null)?.editUser
+        const name =
+          selectedUser && selectedUser.id?.toString() === userId
+            ? selectedUser.name
+            : stateUser && stateUser.id?.toString() === userId
+              ? stateUser.name
+              : `User #${userId}`
+        items.push({ label: name })
+        continue
       }
 
       // Projects/:id
@@ -228,5 +245,6 @@ export function useBreadcrumbs(): BreadcrumbItem[] {
     selectedTodo,
     selectedTicket,
     selectedRatingConfig,
+    selectedUser,
   ])
 }
