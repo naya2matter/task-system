@@ -8,7 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, Pencil, Trash2, Star, Calendar, CheckSquare, Eye } from "lucide-react"
+import { MoreHorizontal, Pencil, Trash2, Star, Calendar, CheckSquare, Eye, CheckCircle2 } from "lucide-react"
 import { useTilt } from "@/hooks/use-tilt"
 // Use the API-aligned Task type (not the mock from data.ts)
 import type { Task } from "@/app/tasks/types"
@@ -20,9 +20,13 @@ type TaskCardProps = {
   onEdit: (task: Task) => void
   onDelete: (task: Task) => void
   onRate: (task: Task) => void
+  /** Mark the task complete (status → done); shown to assigned developers */
+  onMarkComplete: (task: Task) => void
   canEdit: boolean
   canDelete: boolean
   canRate: boolean
+  /** Logged-in user's id — used to detect tasks assigned to the current developer */
+  currentUserId: number | null
 }
 
 function getInitials(name: string) {
@@ -124,15 +128,21 @@ function SubtasksProgress({
   )
 }
 
-export function TaskCard({ task, onSelect, onEdit, onDelete, onRate, canEdit, canDelete, canRate }: TaskCardProps) {
+export function TaskCard({ task, onSelect, onEdit, onDelete, onRate, onMarkComplete, canEdit, canDelete, canRate, currentUserId }: TaskCardProps) {
   const { ref, style } = useTilt<HTMLDivElement>({ maxTilt: 5, scale: 1.015 })
 
   // Count completed subtasks using the API field is_complete
   const completedSubtasks = task.subtasks.filter((s) => s.is_complete).length
   const totalSubtasks = task.subtasks.length
-  
+
   // Resolve project name from the nested section.project relationship
   const projectName = task.section?.project?.name ?? "-"
+
+  // A developer can mark a task complete when it's assigned to them and it isn't
+  // already done or rated.
+  const isAssignee =
+    currentUserId != null && task.assigned_users.some((u) => u.id === currentUserId)
+  const canComplete = isAssignee && task.status !== "done" && task.status !== "rated"
 
   return (
     <Card ref={ref} style={style} className="flex flex-col group">
@@ -147,10 +157,23 @@ export function TaskCard({ task, onSelect, onEdit, onDelete, onRate, canEdit, ca
               {task.priority}
             </Badge>
           </div>
-          {(canEdit || canDelete || canRate) && (
+          <div className="flex items-center gap-1">
+          {/* Quick "mark complete" — shown to assignees on unfinished tasks */}
+          {canComplete && (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="text-green-600 hover:text-green-700 hover:bg-green-500/10 dark:text-green-400"
+              title="Mark complete"
+              aria-label="Mark complete"
+              onClick={() => onMarkComplete(task)}
+            >
+              <CheckCircle2 className="size-4" />
+            </Button>
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon-sm" className="opacity-0 group-hover:opacity-100 transition-opacity">
+              <Button variant="ghost" size="icon-sm">
                 <MoreHorizontal className="size-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -159,6 +182,12 @@ export function TaskCard({ task, onSelect, onEdit, onDelete, onRate, canEdit, ca
                 <Eye className="size-4" />
                 View Details
               </DropdownMenuItem>
+              {canComplete && (
+                <DropdownMenuItem onClick={() => onMarkComplete(task)}>
+                  <CheckCircle2 className="size-4" />
+                  Mark Complete
+                </DropdownMenuItem>
+              )}
               {canRate && (
                 <DropdownMenuItem onClick={() => onRate(task)}>
                   <Star className="size-4" />
@@ -179,7 +208,7 @@ export function TaskCard({ task, onSelect, onEdit, onDelete, onRate, canEdit, ca
               )}
             </DropdownMenuContent>
           </DropdownMenu>
-          )}
+          </div>
         </div>
 
         {/* Title + Project */}

@@ -38,6 +38,8 @@ import { useTasks } from "@/app/tasks/hooks/useTasks"
 import { useDeleteTask } from "@/app/tasks/hooks/useDeleteTask"
 // Hook that fetches all users once — used to populate the assignees filter
 import { useAllUsers } from "@/app/tasks/hooks/useAllUsers"
+// Hook that wraps POST /tasks/{id}/status — used to mark a task complete
+import { useUpdateTaskStatus } from "@/app/tasks/hooks/useUpdateTaskStatus"
 import { TaskTableView } from "@/app/tasks/pages/task-table-view"
 import { TaskGridView } from "@/app/tasks/pages/task-grid-view"
 import { TaskTableSkeleton, TaskGridSkeleton } from "@/app/tasks/pages/task-skeletons"
@@ -45,6 +47,7 @@ import { ConfirmDeleteTaskDialog } from "@/app/tasks/pages/confirm-delete-task-d
 import { TaskForm } from "@/app/tasks/pages/task-form"
 import { TaskRatingForm } from "@/app/tasks/pages/task-rating-form"
 import { usePermissions } from "@/hooks/usePermissions"
+import { useAuthStore } from "@/app/(auth)/stores/authStore"
 // Use the API-aligned Task type
 import type { Task, TaskStatus, TaskPriority } from "@/app/tasks/types"
 
@@ -107,6 +110,9 @@ export default function TasksPage() {
   const canEdit   = hasPermission("edit tasks")
   const canDelete = hasPermission("delete tasks")
   const canRate   = hasPermission("create task ratings")
+  // Current user id — used to detect whether a task is assigned to the developer
+  // viewing it, which gates the "Mark Complete" action.
+  const currentUserId = useAuthStore((s) => s.user?.id) ?? null
   const [searchParams] = useSearchParams()
 
   // ── View + UI state ──────────────────────────────────────────────
@@ -179,6 +185,9 @@ export default function TasksPage() {
 
   // Hook for DELETE /tasks/{id}
   const { deleteTask: deleteTaskById, deleting } = useDeleteTask()
+
+  // Hook for POST /tasks/{id}/status — lets assigned developers mark tasks done
+  const { updateTaskStatus } = useUpdateTaskStatus()
 
   // Fetch all users once for the assignees filter dropdown
   const { users: allUsers } = useAllUsers()
@@ -278,6 +287,13 @@ export default function TasksPage() {
 
   function handleRate(task: Task) {
     navigate(`/tasks/${task.id}/rate`, { state: { ratingTask: task } })
+  }
+
+  // Mark a task as complete (status → "done"). Available to assigned developers.
+  // Refetches the list on success so the new status is reflected immediately.
+  async function handleMarkComplete(task: Task) {
+    const updated = await updateTaskStatus(task.id, "done")
+    if (updated) refetch()
   }
 
   function handleFormCancel() {
@@ -563,22 +579,26 @@ export default function TasksPage() {
                 canEdit={canEdit}
                 canDelete={canDelete}
                 canRate={canRate}
+                currentUserId={currentUserId}
                 tasks={tasks}
                 onSelect={handleSelect}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
                 onRate={handleRate}
+                onMarkComplete={handleMarkComplete}
               />
             ) : (
               <TaskGridView
                 canEdit={canEdit}
                 canDelete={canDelete}
                 canRate={canRate}
+                currentUserId={currentUserId}
                 tasks={tasks}
                 onSelect={handleSelect}
                 onEdit={handleEdit}
                 onDelete={handleDelete}
                 onRate={handleRate}
+                onMarkComplete={handleMarkComplete}
               />
             )}
 
