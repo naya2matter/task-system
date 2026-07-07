@@ -1,7 +1,7 @@
 import { create } from "zustand"
 import { isCancel, AxiosError } from "axios"
 import { taskService } from "../services/taskService"
-import type { Task, TaskListParams, TaskPagination, CreateTaskPayload, UpdateTaskPayload } from "../types"
+import type { Task, TaskListParams, TaskPagination, CreateTaskPayload, UpdateTaskPayload, TaskStatus } from "../types"
 import type { ApiValidationError } from "@/types"
 
 // Pulls a user-friendly error message out of an Axios error response
@@ -46,6 +46,8 @@ interface TasksActions {
   createTask: (payload: CreateTaskPayload) => Promise<Task | null>
   /** PUT /tasks/{id} — update a task; returns updated task or null on error */
   updateTask: (id: number, payload: UpdateTaskPayload) => Promise<Task | null>
+  /** POST /tasks/{id}/status — update only the task status; returns updated task or null */
+  updateTaskStatus: (id: number, status: TaskStatus) => Promise<Task | null>
   /** DELETE /tasks/{id} — delete a task; returns true on success */
   deleteTask: (id: number) => Promise<boolean>
   clearError: () => void
@@ -128,6 +130,22 @@ export const useTasksStore = create<TasksStore>()((set, _get) => ({
     } catch (err) {
       if (!isCancel(err)) {
         set({ submitError: extractErrorMessage(err, "Failed to update task.") })
+      }
+      return null
+    } finally {
+      set({ submitting: false })
+    }
+  },
+
+  // POST /tasks/{id}/status — update only the status (e.g. mark a task done)
+  updateTaskStatus: async (id: number, status: TaskStatus) => {
+    set({ submitting: true, submitError: null })
+    try {
+      const task = await taskService.updateStatus(id, { status })
+      return task
+    } catch (err) {
+      if (!isCancel(err)) {
+        set({ submitError: extractErrorMessage(err, "Failed to update task status.") })
       }
       return null
     } finally {

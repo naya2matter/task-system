@@ -8,12 +8,14 @@ type TaskGridViewProps = {
   onEdit: (task: Task) => void
   onDelete: (task: Task) => void
   onRate: (task: Task) => void
+  onMarkComplete: (task: Task) => void
   canEdit: boolean
   canDelete: boolean
   canRate: boolean
+  currentUserId: number | null
 }
 
-export function TaskGridView({ tasks, onSelect, onEdit, onDelete, onRate, canEdit, canDelete, canRate }: TaskGridViewProps) {
+export function TaskGridView({ tasks, onSelect, onEdit, onDelete, onRate, onMarkComplete, canEdit, canDelete, canRate, currentUserId }: TaskGridViewProps) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 gap-4">
       {tasks.map((task) => (
@@ -24,9 +26,11 @@ export function TaskGridView({ tasks, onSelect, onEdit, onDelete, onRate, canEdi
           onEdit={onEdit}
           onDelete={onDelete}
           onRate={onRate}
+          onMarkComplete={onMarkComplete}
           canEdit={canEdit}
           canDelete={canDelete}
           canRate={canRate}
+          currentUserId={currentUserId}
         />
       ))}
     </div>

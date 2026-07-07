@@ -16,7 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { TruncatedText } from "@/components/ui/truncated-text"
-import { MoreHorizontal, Star, Pencil, Trash2, Eye, CheckSquare } from "lucide-react"
+import { MoreHorizontal, Star, Pencil, Trash2, Eye, CheckSquare, CheckCircle2 } from "lucide-react"
 // Use the API-aligned Task type (not the mock from data.ts)
 import type { Task } from "@/app/tasks/types"
 
@@ -27,9 +27,13 @@ type TaskTableViewProps = {
   onEdit: (task: Task) => void
   onDelete: (task: Task) => void
   onRate: (task: Task) => void
+  /** Mark the task complete (status → done); shown to assigned developers */
+  onMarkComplete: (task: Task) => void
   canEdit: boolean
   canDelete: boolean
   canRate: boolean
+  /** Logged-in user's id — used to detect tasks assigned to the current developer */
+  currentUserId: number | null
 }
 
 function getInitials(name: string) {
@@ -134,7 +138,7 @@ function SubtasksProgress({
   )
 }
 
-export function TaskTableView({ tasks, onSelect, onEdit, onDelete, onRate, canEdit, canDelete, canRate }: TaskTableViewProps) {
+export function TaskTableView({ tasks, onSelect, onEdit, onDelete, onRate, onMarkComplete, canEdit, canDelete, canRate, currentUserId }: TaskTableViewProps) {
   return (
     <div className="w-full">
       <Table scrollable={false} className="w-full table-fixed">
@@ -169,9 +173,8 @@ export function TaskTableView({ tasks, onSelect, onEdit, onDelete, onRate, canEd
               </span>
             </TableHead>
 
-            {(canEdit || canDelete || canRate) && (
-              <TableHead className="text-right w-10">Actions</TableHead>
-            )}
+            {/* Actions column — always shown; every row has at least View Details */}
+            <TableHead className="text-right w-24">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -182,6 +185,12 @@ export function TaskTableView({ tasks, onSelect, onEdit, onDelete, onRate, canEd
 
             // Project name resolved from section â†’ project relationship
             const projectName = task.section?.project?.name ?? "-"
+
+            // A developer can mark a task complete when it's assigned to them and
+            // it isn't already done or rated.
+            const isAssignee =
+              currentUserId != null && task.assigned_users.some((u) => u.id === currentUserId)
+            const canComplete = isAssignee && task.status !== "done" && task.status !== "rated"
 
             return (
               <TableRow key={task.id} className="group">
@@ -267,46 +276,61 @@ export function TaskTableView({ tasks, onSelect, onEdit, onDelete, onRate, canEd
                   <SubtasksProgress completed={completedSubtasks} total={totalSubtasks} />
                 </TableCell>
 
-                {/*  Actions dropdown  */}
-                {(canEdit || canDelete || canRate) && (
+                {/*  Actions column — quick Mark Complete + overflow dropdown  */}
                 <TableCell className="text-right py-3">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
+                  <div className="flex items-center justify-end gap-1">
+                    {/* Quick "mark complete" — shown to assignees on unfinished tasks */}
+                    {canComplete && (
                       <Button
                         variant="ghost"
                         size="icon-sm"
-                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="text-green-600 hover:text-green-700 hover:bg-green-500/10 dark:text-green-400"
+                        title="Mark complete"
+                        aria-label="Mark complete"
+                        onClick={() => onMarkComplete(task)}
                       >
-                        <MoreHorizontal className="size-4" />
+                        <CheckCircle2 className="size-4" />
                       </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => onSelect(task)}>
-                        <Eye className="size-4" />
-                        View Details
-                      </DropdownMenuItem>
-                      {canRate && (
-                        <DropdownMenuItem onClick={() => onRate(task)}>
-                          <Star className="size-4" />
-                          Rate
+                    )}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon-sm">
+                          <MoreHorizontal className="size-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => onSelect(task)}>
+                          <Eye className="size-4" />
+                          View Details
                         </DropdownMenuItem>
-                      )}
-                      {canEdit && (
-                        <DropdownMenuItem onClick={() => onEdit(task)}>
-                          <Pencil className="size-4" />
-                          Edit
-                        </DropdownMenuItem>
-                      )}
-                      {canDelete && (
-                        <DropdownMenuItem variant="destructive" onClick={() => onDelete(task)}>
-                          <Trash2 className="size-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                        {canComplete && (
+                          <DropdownMenuItem onClick={() => onMarkComplete(task)}>
+                            <CheckCircle2 className="size-4" />
+                            Mark Complete
+                          </DropdownMenuItem>
+                        )}
+                        {canRate && (
+                          <DropdownMenuItem onClick={() => onRate(task)}>
+                            <Star className="size-4" />
+                            Rate
+                          </DropdownMenuItem>
+                        )}
+                        {canEdit && (
+                          <DropdownMenuItem onClick={() => onEdit(task)}>
+                            <Pencil className="size-4" />
+                            Edit
+                          </DropdownMenuItem>
+                        )}
+                        {canDelete && (
+                          <DropdownMenuItem variant="destructive" onClick={() => onDelete(task)}>
+                            <Trash2 className="size-4" />
+                            Delete
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </TableCell>
-                )}
               </TableRow>
             )
           })}

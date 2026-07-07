@@ -39,8 +39,11 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { useTask } from "@/app/tasks/hooks/useTask"
+import { useUpdateTaskStatus } from "@/app/tasks/hooks/useUpdateTaskStatus"
+import { useTasksStore } from "@/app/tasks/store/taskStore"
 import { taskService } from "@/app/tasks/services/taskService"
 import { usePermissions } from "@/hooks/usePermissions"
+import { useAuthStore } from "@/app/(auth)/stores/authStore"
 import type {
   Task,
   TaskHelpRequest,
@@ -606,6 +609,8 @@ export default function TaskDetailPage() {
   const { hasPermission } = usePermissions()
   const canEdit   = hasPermission("edit tasks")
   const canRate   = hasPermission("create task ratings")
+  // Current user id — used to detect whether this task is assigned to the developer
+  const currentUserId = useAuthStore((s) => s.user?.id) ?? null
 
   // Parse the route param to a number; null if invalid
   const taskId = useMemo(() => {
@@ -615,6 +620,16 @@ export default function TaskDetailPage() {
 
   // Fetch the task from the API via Zustand store
   const { task, loading, error } = useTask(taskId)
+
+  // Mark-complete support: assigned developers can set status → "done".
+  const { updateTaskStatus, updating } = useUpdateTaskStatus()
+  const refetchTask = useTasksStore((s) => s.fetchTask)
+
+  async function handleMarkComplete() {
+    if (!taskId) return
+    const updated = await updateTaskStatus(taskId, "done")
+    if (updated) refetchTask(taskId) // refresh so the new status is reflected
+  }
 
   // Secondary fetch: assignment-focused payload from GET /tasks/{id}/with-assignments.
   // Runs after base details are loaded so the page remains usable even if this call fails.
@@ -655,6 +670,14 @@ export default function TaskDetailPage() {
     : Array.isArray(task?.assigned_users)
       ? task.assigned_users
       : []
+
+  // A developer can mark this task complete when it's assigned to them and it
+  // isn't already done or rated. Uses the resolved assignee list above so it
+  // works whether assignees come from the base task or the assignments payload.
+  const isAssignee =
+    currentUserId != null && assignedUsers.some((u) => u.id === currentUserId)
+  const canComplete =
+    !!task && isAssignee && task.status !== "done" && task.status !== "rated"
 
   // Subtask quick summary from the base task response (used only for the header stat tile)
   const subtasks = Array.isArray(task?.subtasks) ? task.subtasks : []
@@ -739,9 +762,20 @@ export default function TaskDetailPage() {
                 )}
               </div>
 
-              {/* Action buttons — Edit (edit tasks) and Rate (rating permissions) */}
-              {(canEdit || canRate) && (
+              {/* Action buttons — Mark Complete (assignees), Edit (edit tasks) and Rate (rating permissions) */}
+              {(canEdit || canRate || canComplete) && (
                 <div className="flex flex-wrap gap-2 shrink-0">
+                  {canComplete && (
+                    <Button
+                      size="sm"
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                      disabled={updating}
+                      onClick={handleMarkComplete}
+                    >
+                      <CheckCircle2 className="size-3.5" />
+                      {updating ? "Marking..." : "Mark Complete"}
+                    </Button>
+                  )}
                   {canEdit && (
                     <Button
                       variant="outline"
