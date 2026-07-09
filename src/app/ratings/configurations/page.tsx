@@ -5,11 +5,13 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Plus, Search, Settings2, AlertCircle } from "lucide-react"
+import { Plus, Search, Settings2, AlertCircle, LayoutList, LayoutGrid } from "lucide-react"
 import { Pagination } from "@/components/pagination"
 import { usePagination } from "@/hooks/use-pagination"
 import { ConfigurationTableView } from "@/app/ratings/configurations/configuration-table-view"
+import { ConfigurationGridView } from "@/app/ratings/configurations/configuration-grid-view"
 import { ConfirmDeleteConfigurationDialog } from "@/app/ratings/configurations/confirm-delete-configuration-dialog"
 import { ConfigurationDetailSheet } from "@/app/ratings/configurations/configuration-detail"
 import InlineStats from "@/components/inline-stats"
@@ -22,6 +24,7 @@ import { usePermissions } from "@/hooks/usePermissions"
 
 // "ALL" stays client-side; the other two values call GET /rating-configs/type/{type}
 type TypeFilter = "ALL" | ApiRatingConfigType
+type ViewMode = "table" | "grid"
 
 const typeOptions: { value: TypeFilter; label: string }[] = [
   { value: "ALL", label: "All" },
@@ -53,6 +56,7 @@ export default function RatingsConfigurationsPage() {
   // ── UI state ────────────────────────────────────────────────────
   const [search, setSearch] = useState("")
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("ALL")
+  const [view, setView] = useState<ViewMode>("table")
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deleteConfig, setDeleteConfig] = useState<ApiRatingConfig | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
@@ -188,7 +192,7 @@ export default function RatingsConfigurationsPage() {
             />
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <Tabs
               value={typeFilter}
               onValueChange={(v) => {
@@ -205,6 +209,24 @@ export default function RatingsConfigurationsPage() {
               </TabsList>
             </Tabs>
 
+            <ToggleGroup
+              type="single"
+              variant="outline"
+              value={view}
+              onValueChange={(v) => {
+                if (v) setView(v as ViewMode)
+              }}
+            >
+              <ToggleGroupItem value="table" aria-label="Table view">
+                <LayoutList className="size-3.5" />
+                <span className="hidden sm:inline">Table</span>
+              </ToggleGroupItem>
+              <ToggleGroupItem value="grid" aria-label="Grid view">
+                <LayoutGrid className="size-3.5" />
+                <span className="hidden sm:inline">Grid</span>
+              </ToggleGroupItem>
+            </ToggleGroup>
+
             {canCreate && (
               <Button
                 className="transition-all hover:shadow-md hover:shadow-primary/25"
@@ -219,25 +241,51 @@ export default function RatingsConfigurationsPage() {
         </div>
 
         {/* Content */}
-        <Card>
-          <CardContent className="p-0">
-            {/* Loading skeleton while the API request is in flight */}
-            {activeLoading && (
-              <div className="flex flex-col divide-y">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className="flex items-center gap-4 px-4 py-3">
-                    <Skeleton className="h-4 w-1/3" />
-                    <Skeleton className="h-5 w-20 rounded-full" />
-                    <Skeleton className="h-5 w-16 rounded-full" />
-                    <Skeleton className="h-4 w-12" />
-                    <Skeleton className="h-7 w-7 rounded-full" />
-                    <Skeleton className="h-4 w-24 ml-auto" />
-                  </div>
-                ))}
-              </div>
-            )}
-            {/* Empty state */}
-            {!activeLoading && !activeError && paged.length === 0 && (
+        {/* Loading skeleton while the API request is in flight */}
+        {activeLoading && (
+          view === "table" ? (
+            <Card>
+              <CardContent className="p-0">
+                <div className="flex flex-col divide-y">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <div key={i} className="flex items-center gap-4 px-4 py-3">
+                      <Skeleton className="h-4 w-1/3" />
+                      <Skeleton className="h-5 w-20 rounded-full" />
+                      <Skeleton className="h-5 w-16 rounded-full" />
+                      <Skeleton className="h-4 w-12" />
+                      <Skeleton className="h-7 w-7 rounded-full" />
+                      <Skeleton className="h-4 w-24 ml-auto" />
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                <Card key={i}>
+                  <CardContent className="flex flex-col gap-4 pt-4 px-4">
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="h-5 w-24 rounded-full" />
+                      <Skeleton className="h-5 w-16 rounded-full" />
+                    </div>
+                    <Skeleton className="h-6 w-2/3" />
+                    <Skeleton className="h-4 w-full" />
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="size-6 rounded-full" />
+                      <Skeleton className="h-4 w-24" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )
+        )}
+
+        {/* Empty state */}
+        {!activeLoading && !activeError && paged.length === 0 && (
+          <Card>
+            <CardContent className="p-0">
               <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
                 <div className="rounded-full bg-muted p-4">
                   <Settings2 className="size-6 text-muted-foreground" />
@@ -261,18 +309,32 @@ export default function RatingsConfigurationsPage() {
                   </Button>
                 )}
               </div>
-            )}
-            {/* Table — only shown when data is loaded */}
-            {!activeLoading && !activeError && paged.length > 0 && (
-              <ConfigurationTableView
-                configurations={paged}
-                onView={handleView}
-                onEdit={canEdit ? handleEdit : undefined}
-                onDelete={canDelete ? handleDelete : undefined}
-              />
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Loaded data — Table or Grid depending on the selected view */}
+        {!activeLoading && !activeError && paged.length > 0 && (
+          view === "table" ? (
+            <Card>
+              <CardContent className="p-0">
+                <ConfigurationTableView
+                  configurations={paged}
+                  onView={handleView}
+                  onEdit={canEdit ? handleEdit : undefined}
+                  onDelete={canDelete ? handleDelete : undefined}
+                />
+              </CardContent>
+            </Card>
+          ) : (
+            <ConfigurationGridView
+              configurations={paged}
+              onView={handleView}
+              onEdit={canEdit ? handleEdit : undefined}
+              onDelete={canDelete ? handleDelete : undefined}
+            />
+          )
+        )}
 
         {/* Pagination */}
         {totalPages > 1 && (

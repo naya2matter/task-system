@@ -6,6 +6,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar"
 
 export function NavMain({
@@ -18,6 +19,12 @@ export function NavMain({
   }[]
 }) {
   const location = useLocation()
+  const { isMobile, setOpenMobile } = useSidebar()
+
+  // On mobile the sidebar is an off-canvas drawer — close it after navigating.
+  const handleNavigate = () => {
+    if (isMobile) setOpenMobile(false)
+  }
 
   return (
     <SidebarGroup>
@@ -37,9 +44,10 @@ export function NavMain({
                       : "text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:border-sidebar-border/40"
                   }`}
               >
-                <Link 
+                <Link
                   to={item.url}
                   aria-label={item.title}
+                  onClick={handleNavigate}
                   className="relative flex items-center gap-2 group-data-[collapsible=icon]:!gap-0 group-data-[collapsible=icon]:justify-center"
                 >
                   {/* Smooth left border indicator for active state */}

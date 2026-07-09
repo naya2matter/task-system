@@ -31,6 +31,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
   Table,
   TableBody,
   TableCell,
@@ -46,6 +53,7 @@ import { usePermissions } from "@/hooks/usePermissions"
 import { useAuthStore } from "@/app/(auth)/stores/authStore"
 import type {
   Task,
+  TaskStatus,
   TaskHelpRequest,
   TaskRatingRecord,
   HelpRequestRatingValue,
@@ -621,14 +629,14 @@ export default function TaskDetailPage() {
   // Fetch the task from the API via Zustand store
   const { task, loading, error } = useTask(taskId)
 
-  // Mark-complete support: assigned developers can set status → "done".
+  // Status-change support: assigned developers can update status (except "rated").
   const { updateTaskStatus, updating } = useUpdateTaskStatus()
   const refetchTask = useTasksStore((s) => s.fetchTask)
 
-  async function handleMarkComplete() {
+  async function handleStatusChange(status: TaskStatus) {
     if (!taskId) return
-    const updated = await updateTaskStatus(taskId, "done")
-    if (updated) refetchTask(taskId) // refresh so the new status is reflected
+    const updated = await updateTaskStatus(taskId, status)
+    if (updated) refetchTask(taskId)
   }
 
   // Secondary fetch: assignment-focused payload from GET /tasks/{id}/with-assignments.
@@ -671,13 +679,11 @@ export default function TaskDetailPage() {
       ? task.assigned_users
       : []
 
-  // A developer can mark this task complete when it's assigned to them and it
-  // isn't already done or rated. Uses the resolved assignee list above so it
-  // works whether assignees come from the base task or the assignments payload.
+  // An assignee can change the task status to any non-"rated" value.
+  // "rated" is set by the rating system and cannot be changed by the user.
   const isAssignee =
     currentUserId != null && assignedUsers.some((u) => u.id === currentUserId)
-  const canComplete =
-    !!task && isAssignee && task.status !== "done" && task.status !== "rated"
+  const canChangeStatus = !!task && isAssignee && task.status !== "rated"
 
   // Subtask quick summary from the base task response (used only for the header stat tile)
   const subtasks = Array.isArray(task?.subtasks) ? task.subtasks : []
@@ -762,19 +768,29 @@ export default function TaskDetailPage() {
                 )}
               </div>
 
-              {/* Action buttons — Mark Complete (assignees), Edit (edit tasks) and Rate (rating permissions) */}
-              {(canEdit || canRate || canComplete) && (
-                <div className="flex flex-wrap gap-2 shrink-0">
-                  {canComplete && (
-                    <Button
-                      size="sm"
-                      className="bg-green-600 hover:bg-green-700 text-white"
-                      disabled={updating}
-                      onClick={handleMarkComplete}
-                    >
-                      <CheckCircle2 className="size-3.5" />
-                      {updating ? "Marking..." : "Mark Complete"}
-                    </Button>
+              {/* Action buttons — Status changer (assignees), Edit (edit tasks) and Rate (rating permissions) */}
+              {(canEdit || canRate || canChangeStatus) && (
+                <div className="flex flex-wrap gap-2 shrink-0 items-center">
+                  {canChangeStatus && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground shrink-0">Status:</span>
+                      <Select
+                        value={task.status}
+                        onValueChange={(v) => handleStatusChange(v as TaskStatus)}
+                        disabled={updating}
+                      >
+                        <SelectTrigger className="h-8 w-36 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(["pending", "in_progress", "done"] as TaskStatus[]).map((s) => (
+                            <SelectItem key={s} value={s} className="text-xs">
+                              {statusLabel[s]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   )}
                   {canEdit && (
                     <Button

@@ -9,10 +9,19 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { HtmlContent } from "@/components/ui/html-content"
 import { Pencil, Star, CheckCircle2, Circle } from "lucide-react"
+import { useAuthStore } from "@/app/(auth)/stores/authStore"
+import { useUpdateTaskStatus } from "@/app/tasks/hooks/useUpdateTaskStatus"
 // Use the API-aligned Task type (not the mock from data.ts)
-import type { Task } from "@/app/tasks/types"
+import type { Task, TaskStatus } from "@/app/tasks/types"
 
 type TaskDetailSheetProps = {
   task: Task | null
@@ -20,6 +29,8 @@ type TaskDetailSheetProps = {
   onOpenChange: (open: boolean) => void
   onEdit?: (task: Task) => void
   onRate?: (task: Task) => void
+  /** Called with the updated task after a status change so the parent can refresh its list */
+  onStatusChanged?: (updated: Task) => void
 }
 
 function getInitials(name: string) {
@@ -58,8 +69,21 @@ export function TaskDetailSheet({
   onOpenChange,
   onEdit,
   onRate,
+  onStatusChanged,
 }: TaskDetailSheetProps) {
+  const currentUserId = useAuthStore((s) => s.user?.id) ?? null
+  const { updateTaskStatus, updating } = useUpdateTaskStatus()
+
   if (!task) return null
+
+  const isAssignee =
+    currentUserId != null && task.assigned_users.some((u) => u.id === currentUserId)
+  const canChangeStatus = isAssignee && task.status !== "rated"
+
+  async function handleStatusChange(status: TaskStatus) {
+    const updated = await updateTaskStatus(task!.id, status)
+    if (updated) onStatusChanged?.(updated)
+  }
 
   // Count completed subtasks using the API field is_complete
   const completedSubtasks = task.subtasks.filter((s) => s.is_complete).length
@@ -93,7 +117,7 @@ export function TaskDetailSheet({
               </p>
               <div className="flex items-center gap-2">
                 <span
-                  className={`size-2 rounded-full ${
+                  className={`size-2 rounded-full shrink-0 ${
                     task.status === "in_progress"
                       ? "bg-primary animate-pulse"
                       : task.status === "done" || task.status === "rated"
@@ -105,6 +129,27 @@ export function TaskDetailSheet({
                   {statusLabel[task.status] ?? task.status}
                 </Badge>
               </div>
+              {/* Assignees can change status to any non-rated value */}
+              {canChangeStatus && (
+                <div className="mt-2">
+                  <Select
+                    value={task.status}
+                    onValueChange={(v) => handleStatusChange(v as TaskStatus)}
+                    disabled={updating}
+                  >
+                    <SelectTrigger className="h-7 w-full text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(["pending", "in_progress", "done"] as TaskStatus[]).map((s) => (
+                        <SelectItem key={s} value={s} className="text-xs">
+                          {statusLabel[s]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
             <div className="rounded-lg bg-muted/50 p-4">
               <p className="text-sm font-semibold uppercase tracking-widest text-muted-foreground mb-1">

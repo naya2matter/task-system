@@ -38,8 +38,13 @@ export function NavCollapsible({
   }[]
 }) {
   const location = useLocation()
-  const { state, isMobile } = useSidebar()
+  const { state, isMobile, setOpenMobile } = useSidebar()
   const isCollapsed = state === "collapsed" && !isMobile
+
+  // On mobile the sidebar is an off-canvas drawer — close it after navigating.
+  const handleNavigate = () => {
+    if (isMobile) setOpenMobile(false)
+  }
 
   return (
     <SidebarGroup>
@@ -84,7 +89,7 @@ export function NavCollapsible({
                       const isSubActive = location.pathname === subItem.url
                       return (
                         <DropdownMenuItem key={subItem.title} asChild className={`focus:bg-white/10 focus:text-white rounded-lg cursor-pointer mx-1 my-0.5 ${isSubActive ? "bg-white/10" : ""}`}>
-                           <Link to={subItem.url} className="w-full flex items-center pr-2 py-1">
+                           <Link to={subItem.url} onClick={handleNavigate} className="w-full flex items-center pr-2 py-1">
                              <div className={`mr-2 h-1.5 w-1.5 rounded-full flex-shrink-0 ${isSubActive ? "bg-sidebar-primary" : "bg-white/20"}`} />
                              <span className="text-sm font-medium">{subItem.title}</span>
                            </Link>
@@ -141,7 +146,7 @@ export function NavCollapsible({
                               : "hover:bg-sidebar-accent/50"
                           }`}
                         >
-                          <Link to={subItem.url}>
+                          <Link to={subItem.url} onClick={handleNavigate}>
                             <span>{subItem.title}</span>
                           </Link>
                         </SidebarMenuSubButton>

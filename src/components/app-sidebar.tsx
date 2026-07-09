@@ -11,6 +11,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar"
 import {
   LayoutDashboard,
@@ -102,6 +103,12 @@ const data = {
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { hasRole, hasPermission } = usePermissions();
   const isAdmin = hasRole("admin");
+  const { isMobile, setOpenMobile } = useSidebar();
+
+  // On mobile the sidebar is an off-canvas drawer — close it after navigating.
+  const handleNavigate = () => {
+    if (isMobile) setOpenMobile(false)
+  }
 
   const navMainItems = data.navMain.filter((item) => {
     if (item.url === "/users") return isAdmin || hasPermission("view users")
@@ -163,7 +170,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               tooltip="Task System"
               className="h-auto p-0 hover:bg-transparent group/brand"
             >
-              <Link to="/" aria-label="Task System" className="flex  flex-col items-center gap-1 rounded-xl p-1 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:!gap-0 group-data-[collapsible=icon]:justify-center  group-data-[collapsible=icon]:flex-row">
+              <Link to="/" aria-label="Task System" onClick={handleNavigate} className="flex  flex-col items-center gap-1 rounded-xl p-1 group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:!gap-0 group-data-[collapsible=icon]:justify-center  group-data-[collapsible=icon]:flex-row">
                 <div className="flex shrink-0 items-center justify-center overflow-hidden rounded-xl bg-black/80 p-1 ring-1 ring-white/10 shadow-sm transition-all duration-200 h-11 w-11 group-data-[collapsible=icon]:h-8 group-data-[collapsible=icon]:w-8 group-data-[collapsible=icon]:!p-0.5  group-data-[collapsible=icon]:!mx-auto">
                   <img src={taskSystemLogo} alt="Task System" className="h-full w-full object-contain" />
                 </div>
