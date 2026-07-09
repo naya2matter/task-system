@@ -55,16 +55,37 @@ function ComponentDefaultRow({
       </div>
       {/* Show each setting as a small key-value pair (skip the `enabled` key) */}
       {data && (
-        <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+        <div className="flex flex-col gap-1.5">
+          {/* Primitive values (string, number, boolean) — inline chips */}
+          <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+            {Object.entries(data)
+              .filter(([k]) => k !== "enabled")
+              .filter(([, v]) => typeof v !== "object" || v === null)
+              .map(([k, v]) => (
+                <span key={k} className="text-[11px] text-muted-foreground">
+                  <span className="font-mono">{k.replace(/_/g, " ")}</span>:{" "}
+                  <span className="font-semibold text-foreground">{String(v)}</span>
+                </span>
+              ))}
+          </div>
+          {/* Object values (e.g. penalties) — expanded as indented sub-rows */}
           {Object.entries(data)
             .filter(([k]) => k !== "enabled")
+            .filter(([, v]) => typeof v === "object" && v !== null)
             .map(([k, v]) => (
-              <span key={k} className="text-[11px] text-muted-foreground">
-                <span className="font-mono">{k.replace(/_/g, " ")}</span>:{" "}
-                <span className="font-semibold text-foreground">
-                  {typeof v === "object" ? JSON.stringify(v) : String(v)}
+              <div key={k} className="flex flex-col gap-0.5">
+                <span className="text-[11px] text-muted-foreground font-mono">
+                  {k.replace(/_/g, " ")}:
                 </span>
-              </span>
+                <div className="flex flex-wrap gap-x-3 gap-y-0.5 ps-2 border-s border-border">
+                  {Object.entries(v as Record<string, unknown>).map(([sk, sv]) => (
+                    <span key={sk} className="text-[11px] text-muted-foreground">
+                      <span className="font-mono">{sk.replace(/_/g, " ")}</span>:{" "}
+                      <span className="font-semibold text-foreground">{String(sv)}</span>
+                    </span>
+                  ))}
+                </div>
+              </div>
             ))}
         </div>
       )}

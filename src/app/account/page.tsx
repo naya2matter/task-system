@@ -160,7 +160,7 @@ function ProfileTab({ user, loadingUser, onProfileSaved }: ProfileTabProps) {
     return (
       <div className="flex flex-col gap-6">
         <div className="flex items-center gap-4">
-          <Skeleton className="size-20 rounded-xl" />
+          <Skeleton className="size-20 rounded-full" />
           <div className="flex flex-col gap-2">
             <Skeleton className="h-4 w-28" />
             <Skeleton className="h-3 w-40" />
@@ -189,15 +189,15 @@ function ProfileTab({ user, loadingUser, onProfileSaved }: ProfileTabProps) {
         <div className="flex items-center gap-4">
           {/* Clicking the avatar triggers the hidden file input */}
           <div className="group relative cursor-pointer" onClick={handleAvatarClick}>
-            <Avatar className="size-20 rounded-xl border-2 border-primary/20">
+            <Avatar className="size-20 rounded-full">
               {/* Show either a local blob preview or the server avatar URL */}
               {avatarPreview && <AvatarImage src={avatarPreview} alt="Profile" />}
-              <AvatarFallback className="rounded-xl bg-primary/10 text-lg font-semibold text-primary">
+              <AvatarFallback className="rounded-full bg-primary/10 text-lg font-semibold text-primary">
                 {user ? getInitials(user.name) : "??"}
               </AvatarFallback>
             </Avatar>
             {/* Camera overlay — only visible on hover */}
-            <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+            <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
               <Camera className="size-5 text-white" />
             </div>
           </div>
