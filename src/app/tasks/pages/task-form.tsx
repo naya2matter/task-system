@@ -129,7 +129,7 @@ export function TaskForm({ mode, initialData, defaultProjectId, defaultSectionId
   // ── Form field state (initialised from initialData in edit mode) ─
   const [name, setName] = useState(initialData?.name ?? "")
   const [description, setDescription] = useState(initialData?.description ?? "")
-  const [status, setStatus] = useState<TaskStatus>(initialData?.status ?? "pending")
+  const [status, setStatus] = useState<TaskStatus>(initialData?.status ?? "in_progress")
   const [priority, setPriority] = useState<TaskPriority>(initialData?.priority ?? "medium")
   const [weight, setWeight] = useState<number>(initialData?.weight ?? 1)
   const [dueDate, setDueDate] = useState(initialData?.due_date ?? "")
@@ -211,7 +211,7 @@ export function TaskForm({ mode, initialData, defaultProjectId, defaultSectionId
     if (!initialData) return
     setName(initialData.name ?? "")
     setDescription(initialData.description ?? "")
-    setStatus(initialData.status ?? "pending")
+    setStatus(initialData.status ?? "in_progress")
     setPriority(initialData.priority ?? "medium")
     setWeight(initialData.weight ?? 1)
     setDueDate(initialData.due_date ?? "")
@@ -514,9 +514,7 @@ export function TaskForm({ mode, initialData, defaultProjectId, defaultSectionId
                       ))}
                     </SelectContent>
                   </Select>
-                  <p className="text-xs text-muted-foreground">
-                    Saved through POST /tasks/{"{id}"}/status after the main task save succeeds.
-                  </p>
+
                 </div>
 
                 {/* Priority toggle — spans full width in create, half-width in edit */}
